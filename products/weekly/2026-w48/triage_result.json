@@ -1,0 +1,15 @@
+{
+  "status": "approved",
+  "reason": null,
+  "reason_code": null,
+  "user_message": "Your idea was approved: **Offline tip jar** ✅\n\nIt’s on the weekly voting list. Add a 👍 on the ballot comment to support it.\n\nThank you for contributing to the micro-product factory! 🏭✨",
+  "normalized_title": "Offline tip jar",
+  "normalized_description": "A tiny page to track cash tips for a small cafe without internet",
+  "category": "",
+  "constraints": "",
+  "summary": "Offline tip jar: A tiny page to track cash tips for a small cafe without i...",
+  "security_flags": [],
+  "source": "github_issue",
+  "issue_number": null,
+  "lang": "en"
+}
