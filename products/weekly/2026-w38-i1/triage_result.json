@@ -1,0 +1,14 @@
+{
+  "status": "approved",
+  "reason": null,
+  "reason_code": null,
+  "user_message": "تم قبول فكرتك: **بطاقة تهنية عيد الفطر** ✅\n\nستدخل دورة الإنتاج الذكية قريباً. ستجد المنتج في مجلد `products/weekly/` بعد اكتمال البناء.\n\nشكراً لمساهمتك في مصنع المنتجات المصغرة! 🏭✨",
+  "normalized_title": "بطاقة تهنية عيد الفطر",
+  "normalized_description": "صفحة بسيطة لكتابة اسم المهنا ورسالة قصيرة مع تصميم احتفالي يعمل بدون انترنت",
+  "category": "",
+  "constraints": "",
+  "summary": "بطاقة تهنية عيد الفطر: صفحة بسيطة لكتابة اسم المهنا ورسالة قصيرة مع تصميم احتفال...",
+  "security_flags": [],
+  "source": "manual",
+  "issue_number": null
+}
