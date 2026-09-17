@@ -770,6 +770,27 @@ jobs:
           print("Catalog updated. Total products:", catalog["total_count"])
           PY
 
+
+      - name: Update contributors reputation
+        if: success()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          SOURCE_ISSUE: ${{ needs.prepare.outputs.source_issue_number }}
+          WEEK_ID: ${{ needs.prepare.outputs.week_id }}
+          TARGET: ${{ needs.prepare.outputs.target_path }}
+        run: |
+          DIV=""
+          if [ -f "$TARGET/meta.json" ]; then
+            DIV=$(python3 -c "import json; print(json.load(open('$TARGET/meta.json')).get('diversity_score') or '')")
+          fi
+          export DIVERSITY_SCORE="$DIV"
+          # Prefer issue author; fallback empty
+          python3 scripts/update_contributors.py
+          ls -la catalog/contributors.json || true
+
       - name: Commit and push
         run: |
           WEEK_ID="${{ needs.prepare.outputs.week_id }}"
@@ -779,7 +800,7 @@ jobs:
           git config user.name "Micro Product Factory"
           git config user.email "factory@users.noreply.github.com"
 
-          git add "$TARGET" catalog/index.json
+          git add "$TARGET" catalog/index.json catalog/contributors.json
           git status
 
           if git diff --staged --quiet; then
@@ -836,3 +857,41 @@ jobs:
           echo "Product  : https://github.com/${REPO}/tree/${BRANCH}/products/weekly/${WEEK_ID}"
           echo "Page     : https://github.com/${REPO}/blob/${BRANCH}/products/weekly/${WEEK_ID}/index.html"
           echo "========================================"
+
+
+  notify:
+    name: Notify Telegram
+    needs: [prepare, publish]
+    if: ${{ always() && needs.publish.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Send Telegram (optional)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FACTORY_LANG: ${{ github.event.inputs.lang || vars.FACTORY_LANG || 'ar' }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          WEEK_ID: ${{ needs.prepare.outputs.week_id }}
+          META_PATH: products/weekly/${{ needs.prepare.outputs.week_id }}/meta.json
+          PAGES_BASE_URL: ${{ vars.PAGES_BASE_URL || '' }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Telegram not configured — skip"
+            exit 0
+          fi
+          # resolve contributor from meta/issue if any
+          ISSUE="${{ needs.prepare.outputs.source_issue_number }}"
+          if [ -n "$ISSUE" ]; then
+            USER=$(gh api "repos/${{ github.repository }}/issues/$ISSUE" --jq .user.login 2>/dev/null || true)
+            export CONTRIBUTOR="$USER"
+          fi
+          python3 scripts/notify_telegram.py

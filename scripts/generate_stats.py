@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / "agents"))
 from utils.i18n import get_text, resolve_lang  # noqa: E402
 
 CATALOG = ROOT / "catalog" / "index.json"
+CONTRIB = ROOT / "catalog" / "contributors.json"
 OUT = ROOT / "stats" / "index.html"
 
 
@@ -73,16 +74,54 @@ def build_html(catalog: dict, lang: str) -> str:
     bars = ""
     for p in products[:8]:
         ds = p.get("diversity_score")
-        if ds is None:
-            continue
-        try:
-            w = max(4, min(100, float(ds)))
-        except (TypeError, ValueError):
+        cs = p.get("critic_score")
+        if ds is None and cs is None:
             continue
         week = p.get("week", "")
-        bars += f'<div class="bar-row"><span class="bar-label">{week}</span><span class="bar" style="width:{w}%"></span><span class="bar-val">{ds}</span></div>\n'
+        try:
+            w = max(4, min(100, float(ds))) if ds is not None else 4
+        except (TypeError, ValueError):
+            w = 4
+        try:
+            cw = max(4, min(100, float(cs) * 10)) if cs is not None else 0
+        except (TypeError, ValueError):
+            cw = 0
+        ds_s = ds if ds is not None else "—"
+        cs_s = cs if cs is not None else "—"
+        bars += (
+            f'<div class="bar-row"><span class="bar-label">{week}</span>'
+            f'<span class="bar" style="width:{w}%" title="diversity"></span>'
+            f'<span class="bar bar-critic" style="width:{cw}%" title="critic"></span>'
+            f'<span class="bar-val">D {ds_s} · C {cs_s}</span></div>\n'
+        )
     if not bars:
         bars = f'<p class="muted">{"لا بيانات تنوع بعد" if lang == "ar" else "No diversity data yet"}</p>'
+
+    # contributors top 5
+    contrib_rows = []
+    if CONTRIB.exists():
+        try:
+            contrib_rows = (json.loads(CONTRIB.read_text(encoding="utf-8")).get("contributors") or [])[:5]
+        except Exception:
+            contrib_rows = []
+    contrib_html = ""
+    for c in contrib_rows:
+        u = c.get("username") or "?"
+        produced = c.get("ideas_produced") or 0
+        submitted = c.get("ideas_submitted") or 0
+        avg = c.get("avg_diversity_score")
+        avg_s = f"{avg}" if avg is not None else "—"
+        contrib_html += (
+            f'<div class="contrib"><strong>@{u}</strong> · '
+            f'{produced} {t("stats.produced")} · {submitted} {t("stats.ideas")} · '
+            f'D {avg_s}</div>\n'
+        )
+    if not contrib_html:
+        contrib_html = f'<p class="muted">{t("stats.no_contributors")}</p>'
+
+    telegram_on = (os.environ.get("TELEGRAM_CONFIGURED") or "").lower() in ("1", "true", "yes")
+    telegram_label = t("stats.telegram_on") if telegram_on else t("stats.telegram_off")
+    telegram_badge = "✅" if telegram_on else "❌"
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     last = catalog.get("last_updated") or now
@@ -143,6 +182,12 @@ a.home{{color:var(--accent);text-decoration:none}}
   <div class="bars">
     {bars}
   </div>
+
+  <h2>{t("stats.contributors")}</h2>
+  <div class="contrib-list">{contrib_html}</div>
+
+  <h2>{t("stats.notifications")}</h2>
+  <p class="muted">{telegram_badge} {telegram_label}</p>
 
   <footer>
     {t("stats.updated")}: {last}<br>

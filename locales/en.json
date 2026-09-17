@@ -40,5 +40,14 @@
   "content.fallback_description": "A simple lightweight tool that runs in the browser offline.",
   "content.cta_primary": "Start",
   "content.cta_secondary": "Reset",
-  "content.footer": "Built by the Weekly Micro-Product Factory"
+  "content.footer": "Built by the Weekly Micro-Product Factory",
+  "telegram.success": "🏭 New factory product!\n\n📦 {title}\n📅 {week}\n🔗 {url}\n\n🎨 Diversity: {diversity}\n🔍 Critic: {critic_icon} {critic_score}/10 ({verdict})\n👤 Contributor: {contributor}",
+  "telegram.no_contributor": "Community / manual",
+  "stats.contributors": "Top contributors",
+  "stats.no_contributors": "No contributors yet",
+  "stats.notifications": "Notifications",
+  "stats.telegram_on": "Telegram enabled",
+  "stats.telegram_off": "Telegram not configured",
+  "stats.ideas": "ideas",
+  "stats.produced": "shipped"
 }

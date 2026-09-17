@@ -29,6 +29,7 @@ jobs:
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           FACTORY_LANG: ${{ vars.FACTORY_LANG || 'ar' }}
+          TELEGRAM_CONFIGURED: ${{ vars.TELEGRAM_ENABLED || 'false' }}
         run: |
           python scripts/generate_stats.py
           ls -la stats/

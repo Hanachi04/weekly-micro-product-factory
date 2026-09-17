@@ -40,5 +40,14 @@
   "content.fallback_description": "أداة بسيطة وخفيفة تعمل مباشرة من المتصفح بدون إنترنت.",
   "content.cta_primary": "ابدأ",
   "content.cta_secondary": "إعادة",
-  "content.footer": "منتج من مصنع المنتجات المصغرة الأسبوعي"
+  "content.footer": "منتج من مصنع المنتجات المصغرة الأسبوعي",
+  "telegram.success": "🏭 منتج جديد من المصنع!\n\n📦 {title}\n📅 {week}\n🔗 {url}\n\n🎨 تنوع: {diversity}\n🔍 نقد: {critic_icon} {critic_score}/10 ({verdict})\n👤 مساهم: {contributor}",
+  "telegram.no_contributor": "المجتمع / يدوي",
+  "stats.contributors": "أفضل المساهمين",
+  "stats.no_contributors": "لا مساهمين بعد",
+  "stats.notifications": "الإشعارات",
+  "stats.telegram_on": "Telegram مفعّل",
+  "stats.telegram_off": "Telegram غير مفعّل",
+  "stats.ideas": "أفكار",
+  "stats.produced": "منتجات"
 }
