@@ -1,0 +1,58 @@
+name: فكرة منتج جديد
+description: قدّم فكرة منتج رقمي مصغّر ليتم إنتاجه في الدورة الأسبوعية
+title: "[فكرة] "
+labels: ["idea", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        شكرًا لتقديم فكرتك!  
+        هذا النموذج بسيط ومصمم ليملأ بسهولة من الهاتف.
+
+  - type: input
+    id: product-title
+    attributes:
+      label: عنوان المنتج المقترح
+      description: اسم قصير وواضح للمنتج (مثال: حاسبة الزكاة، بطاقة تهنئة رمضان)
+      placeholder: مثال: محول الوحدات السريع
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: وصف الفكرة
+      description: اشرح باختصار ماذا يفعل المنتج ولماذا هو مفيد
+      placeholder: منتج بسيط يحسب... يساعد المستخدم على...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: الفئة المستهدفة
+      description: اختر الفئة الأقرب
+      options:
+        - أداة حسابية
+        - صفحة هبوط / عرض
+        - بطاقة أو قالب جاهز
+        - أداة تحويل / تنسيق
+        - محتوى تعليمي قصير
+        - أخرى
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: قيود أو ملاحظات خاصة (اختياري)
+      description: أي متطلبات إضافية أو أشياء يجب تجنبها
+      placeholder: مثال: يجب أن يعمل بدون إنترنت، يدعم RTL فقط، حجم صغير جدًا...
+
+  - type: checkboxes
+    id: agreement
+    attributes:
+      label: الموافقة
+      options:
+        - label: أوافق على أن تكون هذه الفكرة عامة ومتاحة للمجتمع ضمن المشروع المفتوح المصدر
+          required: true
