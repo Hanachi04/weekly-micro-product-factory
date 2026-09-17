@@ -302,6 +302,7 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "feat(product): publish ${WEEK_ID} via ${TEMPLATE} (deterministic)"
+            git pull --rebase origin main || true
             git push
             echo "Pushed successfully"
           fi
