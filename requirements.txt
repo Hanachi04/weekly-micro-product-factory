@@ -1,2 +1,4 @@
-# مكتبات Python المستخدمة في الوكلاء و GitHub Actions
-# (سيتم ملؤها لاحقًا عند بناء الوكلاء)
+# LLM providers (optional — only needed when enable_ai=true)
+google-generativeai>=0.8.0
+groq>=0.11.0
+mistralai>=1.0.0
