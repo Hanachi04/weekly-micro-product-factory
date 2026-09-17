@@ -224,7 +224,7 @@ jobs:
   smart-agents:
     name: Smart Agents
     needs: prepare
-    if: ${{ needs.prepare.outputs.use_ai == 'true' || (github.event_name == 'workflow_dispatch' && inputs.enable_ai == true) }}
+    if: ${{ always() && needs.prepare.result == 'success' && (needs.prepare.outputs.use_ai == 'true' || inputs.enable_ai == true) }}
     runs-on: ubuntu-latest
     env:
       FACTORY_LANG: ${{ github.event.inputs.lang || vars.FACTORY_LANG || 'ar' }}
