@@ -165,6 +165,32 @@ jobs:
           cat diversity_card.json
           echo "✅ Diversity card generated"
 
+
+      - name: Run Content Agent
+        run: |
+          echo "Content Agent starting..."
+          TITLE=$(python3 -c "import json; print(json.load(open('triage_result.json'))['normalized_title'])")
+          DESC=$(python3 -c "import json; print(json.load(open('triage_result.json'))['normalized_description'])")
+          python agents/content_agent.py \
+            --idea-title "$TITLE" \
+            --idea-description "$DESC" \
+            --diversity diversity_card.json \
+            --output content.json
+          echo "--- content.json ---"
+          cat content.json
+          echo "Content generated"
+
+      - name: Run Design Agent
+        run: |
+          echo "Design Agent starting..."
+          python agents/design_agent.py \
+            --diversity diversity_card.json \
+            --content content.json \
+            --templates-dir templates \
+            --output generated_index.html
+          echo "Design HTML generated"
+          wc -c generated_index.html
+
       - name: Upload agent artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -172,60 +198,90 @@ jobs:
           path: |
             triage_result.json
             diversity_card.json
+            content.json
+            generated_index.html
           retention-days: 14
-
 
   build:
     name: Build
-    needs: prepare
+    needs: [prepare, smart-agents]
+    if: always() && needs.prepare.result == 'success' && (needs.smart-agents.result == 'success' || needs.smart-agents.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Copy template and create meta.json
+      - name: Download AI artifacts
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_ai == true && needs.smart-agents.result == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-outputs-${{ needs.prepare.outputs.week_id }}
+          path: ai_out
+        continue-on-error: true
+
+      - name: Assemble product
         id: copy
         run: |
           WEEK_ID="${{ needs.prepare.outputs.week_id }}"
           TARGET="${{ needs.prepare.outputs.target_path }}"
           TEMPLATE="${{ needs.prepare.outputs.template_name }}"
+          ENABLE_AI="${{ inputs.enable_ai }}"
 
           echo "Building product for week: $WEEK_ID"
-          echo "Template: $TEMPLATE"
-          echo "Path: $TARGET"
-
           mkdir -p "$TARGET"
-          cp "templates/$TEMPLATE/index.html" "$TARGET/index.html"
 
-          if [ -f "templates/$TEMPLATE/meta.json" ]; then
-            TITLE=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('name', '$TEMPLATE'))")
-            DESC=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('description', ''))")
+          BUILD_METHOD="deterministic"
+          TITLE=""
+          DESC=""
+
+          if [ "$ENABLE_AI" = "true" ] && [ -f ai_out/generated_index.html ]; then
+            echo "Using AI-generated HTML from Design Agent"
+            cp ai_out/generated_index.html "$TARGET/index.html"
+            BUILD_METHOD="ai_generated"
+            if [ -f ai_out/content.json ]; then
+              TITLE=$(python3 -c "import json; print(json.load(open('ai_out/content.json')).get('title',''))")
+              DESC=$(python3 -c "import json; print(json.load(open('ai_out/content.json')).get('description',''))")
+            fi
+            cp ai_out/diversity_card.json "$TARGET/diversity_card.json" 2>/dev/null || true
+            cp ai_out/content.json "$TARGET/content.json" 2>/dev/null || true
+            cp ai_out/triage_result.json "$TARGET/triage_result.json" 2>/dev/null || true
           else
-            TITLE="$TEMPLATE"
-            DESC="Deterministic product from template $TEMPLATE"
+            echo "Using deterministic template: $TEMPLATE"
+            cp "templates/$TEMPLATE/index.html" "$TARGET/index.html"
+            if [ -f "templates/$TEMPLATE/meta.json" ]; then
+              TITLE=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('name', '$TEMPLATE'))")
+              DESC=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('description', ''))")
+            else
+              TITLE="$TEMPLATE"
+              DESC="Deterministic product from template $TEMPLATE"
+            fi
           fi
+
+          if [ -z "$TITLE" ]; then TITLE="$TEMPLATE"; fi
+          if [ -z "$DESC" ]; then DESC="Weekly micro-product"; fi
 
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          python3 -c "
+          python3 << PY
           import json
           data = {
-            'week': '$WEEK_ID',
-            'title': '''$TITLE''',
-            'description': '''$DESC''',
-            'path': '$TEMPLATE',
-            'build_method': 'deterministic',
-            'generated_at': '$TIMESTAMP',
-            'quality_score': None,
-            'diversity_score': None
+            "week": "$WEEK_ID",
+            "title": """$TITLE""",
+            "description": """$DESC""",
+            "path": "$TEMPLATE",
+            "build_method": "$BUILD_METHOD",
+            "generated_at": "$TIMESTAMP",
+            "quality_score": None,
+            "diversity_score": None
           }
-          with open('$TARGET/meta.json', 'w', encoding='utf-8') as f:
+          with open("$TARGET/meta.json", "w", encoding="utf-8") as f:
               json.dump(data, f, ensure_ascii=False, indent=2)
-          "
+          PY
 
           SIZE=$(du -sb "$TARGET" | cut -f1)
           SIZE_KB=$((SIZE / 1024))
           echo "Product size: ${SIZE_KB} KB ($SIZE bytes)"
+          echo "Build method: $BUILD_METHOD"
 
           if [ "$SIZE" -gt 81920 ]; then
             echo "ERROR: size exceeds 80 KB"
@@ -235,9 +291,11 @@ jobs:
           ls -la "$TARGET"
           cat "$TARGET/meta.json"
 
+
   validate:
     name: Validate
-    needs: [prepare, build]
+    needs: [prepare, build, smart-agents]
+    if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -280,49 +338,119 @@ jobs:
           fi
           echo "Validation passed"
 
+      - name: Download AI for soft checks
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_ai == true }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-outputs-${{ needs.prepare.outputs.week_id }}
+          path: ai_check
+
+      - name: AI soft quality review
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_ai == true }}
+        continue-on-error: true
+        run: |
+          if [ ! -f ai_check/generated_index.html ]; then
+            echo "No AI HTML artifact — skip soft checks"
+            exit 0
+          fi
+          echo "Soft AI quality review..."
+          SIZE=$(wc -c < ai_check/generated_index.html)
+          echo "AI HTML size: $SIZE bytes"
+          if [ "$SIZE" -gt 81920 ]; then
+            echo "WARNING: AI HTML exceeds 80KB"
+          fi
+          if [ -f ai_check/diversity_card.json ]; then
+            python3 -c "
+          import json, pathlib
+          card = json.loads(pathlib.Path('ai_check/diversity_card.json').read_text())
+          html = pathlib.Path('ai_check/generated_index.html').read_text()
+          palette = card.get('suggested_palette') or []
+          found = [c for c in palette if c.lower() in html.lower()]
+          print('Palette found:', found, '/', palette)
+          if palette and not found:
+              print('WARNING: none of suggested_palette colors found')
+          else:
+              print('OK palette check')
+          forbidden = card.get('forbidden_patterns') or []
+          hits = [p for p in forbidden if p and str(p).lower() in html.lower()]
+          if hits:
+              print('WARNING forbidden pattern hits:', hits)
+          else:
+              print('OK forbidden patterns')
+          "
+          fi
+
+
   publish:
     name: Publish
     needs: [prepare, build, validate]
+    if: always() && needs.build.result == 'success' && needs.validate.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Download AI artifacts for publish
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.enable_ai == true }}
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-outputs-${{ needs.prepare.outputs.week_id }}
+          path: ai_out
+        continue-on-error: true
 
       - name: Assemble product files
         run: |
           WEEK_ID="${{ needs.prepare.outputs.week_id }}"
           TARGET="${{ needs.prepare.outputs.target_path }}"
           TEMPLATE="${{ needs.prepare.outputs.template_name }}"
-
+          ENABLE_AI="${{ inputs.enable_ai }}"
           mkdir -p "$TARGET"
-          cp "templates/$TEMPLATE/index.html" "$TARGET/index.html"
-
-          if [ -f "templates/$TEMPLATE/meta.json" ]; then
-            TITLE=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('name', '$TEMPLATE'))")
-            DESC=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('description', ''))")
+          BUILD_METHOD="deterministic"
+          TITLE=""
+          DESC=""
+          if [ "$ENABLE_AI" = "true" ] && [ -f ai_out/generated_index.html ]; then
+            echo "Publishing AI-generated product"
+            cp ai_out/generated_index.html "$TARGET/index.html"
+            BUILD_METHOD="ai_generated"
+            if [ -f ai_out/content.json ]; then
+              TITLE=$(python3 -c "import json; print(json.load(open('ai_out/content.json')).get('title',''))")
+              DESC=$(python3 -c "import json; print(json.load(open('ai_out/content.json')).get('description',''))")
+            fi
+            cp ai_out/diversity_card.json "$TARGET/" 2>/dev/null || true
+            cp ai_out/content.json "$TARGET/" 2>/dev/null || true
+            cp ai_out/triage_result.json "$TARGET/" 2>/dev/null || true
           else
-            TITLE="$TEMPLATE"
-            DESC="Deterministic product from template $TEMPLATE"
+            cp "templates/$TEMPLATE/index.html" "$TARGET/index.html"
+            if [ -f "templates/$TEMPLATE/meta.json" ]; then
+              TITLE=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('name', '$TEMPLATE'))")
+              DESC=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('description', ''))")
+            else
+              TITLE="$TEMPLATE"
+              DESC="Deterministic product from template $TEMPLATE"
+            fi
           fi
-
+          if [ -z "$TITLE" ]; then TITLE="$TEMPLATE"; fi
+          if [ -z "$DESC" ]; then DESC="Weekly micro-product"; fi
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
+          export P_TITLE="$TITLE" P_DESC="$DESC" P_WEEK="$WEEK_ID" P_TEMPLATE="$TEMPLATE" P_METHOD="$BUILD_METHOD" P_TS="$TIMESTAMP" P_TARGET="$TARGET"
           python3 -c "
-          import json
+          import json, os
           data = {
-            'week': '$WEEK_ID',
-            'title': '''$TITLE''',
-            'description': '''$DESC''',
-            'path': '$TEMPLATE',
-            'build_method': 'deterministic',
-            'generated_at': '$TIMESTAMP',
+            'week': os.environ['P_WEEK'],
+            'title': os.environ['P_TITLE'],
+            'description': os.environ['P_DESC'],
+            'path': os.environ['P_TEMPLATE'],
+            'build_method': os.environ['P_METHOD'],
+            'generated_at': os.environ['P_TS'],
             'quality_score': None,
-            'diversity_score': None
+            'diversity_score': None,
           }
-          with open('$TARGET/meta.json', 'w', encoding='utf-8') as f:
+          with open(os.environ['P_TARGET'] + '/meta.json', 'w', encoding='utf-8') as f:
               json.dump(data, f, ensure_ascii=False, indent=2)
           "
-          echo "Product files ready"
+          echo "Product files ready (method=$BUILD_METHOD)"
+          ls -la "$TARGET"
           cat "$TARGET/meta.json"
 
       - name: Update catalog
