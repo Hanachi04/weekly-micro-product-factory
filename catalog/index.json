@@ -1,6 +1,28 @@
 {
   "products": [
     {
+      "week": "2026-w55",
+      "title": "منتج تجريبي",
+      "description": "وصف قصير للمنتج التجريبي",
+      "path": "products/weekly/2026-w55",
+      "template": "calculator",
+      "build_method": "ai_generated",
+      "generated_at": "2026-09-17T19:02:38Z",
+      "source_issue_number": null,
+      "diversity_tags": [
+        "هيكل متعدد الخطوات مع شريط تقدم، يضم صفح",
+        "أسلوب كتابة غير رسمي ومتحمس، يركز على إث",
+        "#FF6F61",
+        "#6A5ACD",
+        "#2E8B57"
+      ],
+      "votes": null,
+      "lang": "ar",
+      "diversity_score": 72.0,
+      "critic_score": 8.5,
+      "critic_verdict": "approved"
+    },
+    {
       "week": "2026-w54",
       "title": "حاسبة بسيطة",
       "description": "حاسبة أساسية للعمليات الأربع تعمل بدون إنترنت",
@@ -182,6 +204,6 @@
       "generated_at": "2026-09-17T14:17:08Z"
     }
   ],
-  "last_updated": "2026-09-17T18:40:19Z",
-  "total_count": 12
+  "last_updated": "2026-09-17T19:02:39Z",
+  "total_count": 13
 }

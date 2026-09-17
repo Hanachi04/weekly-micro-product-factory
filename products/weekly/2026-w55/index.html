@@ -1,0 +1,141 @@
+<!-- design_agent: fallback | palette=#FF6F61,#6A5ACD,#2E8B57 -->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>حاسبة بسيطة</title>
+  <style>
+
+:root {
+  --ai-primary: #FF6F61;
+  --ai-secondary: #6A5ACD;
+  --ai-bg: #2E8B57;
+}
+body { background: var(--ai-bg) !important; }
+h1, h2 { color: var(--ai-primary) !important; }
+button, .cta, a.cta { background: var(--ai-primary) !important; border-color: var(--ai-primary) !important; }
+
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
+      background: #f0f4f8;
+      color: #1a202c;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 320px;
+    }
+    h1 {
+      font-size: 1.4rem;
+      text-align: center;
+      margin-bottom: 0.5rem;
+      color: #2b6cb0;
+    }
+    p.desc {
+      font-size: 0.85rem;
+      text-align: center;
+      color: #718096;
+      margin-bottom: 1.25rem;
+    }
+    .display {
+      background: #edf2f7;
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      font-size: 1.6rem;
+      text-align: left;
+      direction: ltr;
+      margin-bottom: 1rem;
+      min-height: 3rem;
+      word-break: break-all;
+    }
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+    }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.85rem 0;
+      font-size: 1.15rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #e2e8f0;
+      color: #2d3748;
+      transition: background 0.15s;
+    }
+    button:active { background: #cbd5e0; }
+    button.op { background: #bee3f8; color: #2b6cb0; }
+    button.eq { background: #2b6cb0; color: #fff; }
+    button.ac { background: #fed7d7; color: #c53030; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>منتج تجريبي</h1>
+    <p class="desc">وصف قصير للمنتج التجريبي</p>
+    <div class="display" id="display">0</div>
+    <div class="buttons">
+      <button class="ac" onclick="clearAll()">AC</button>
+      <button class="op" onclick="setOp('/')">÷</button>
+      <button class="op" onclick="setOp('*')">×</button>
+      <button class="op" onclick="setOp('-')">−</button>
+      <button onclick="append('7')">7</button>
+      <button onclick="append('8')">8</button>
+      <button onclick="append('9')">9</button>
+      <button class="op" onclick="setOp('+')">+</button>
+      <button onclick="append('4')">4</button>
+      <button onclick="append('5')">5</button>
+      <button onclick="append('6')">6</button>
+      <button class="eq" onclick="calculate()" style="grid-row: span 2">=</button>
+      <button onclick="append('1')">1</button>
+      <button onclick="append('2')">2</button>
+      <button onclick="append('3')">3</button>
+      <button onclick="append('0')" style="grid-column: span 2">0</button>
+      <button onclick="append('.')">.</button>
+    </div>
+  </div>
+  <script>
+    let current = '0', prev = null, op = null, reset = false;
+    const display = document.getElementById('display');
+    function update() { display.textContent = current; }
+    function clearAll() { current = '0'; prev = null; op = null; reset = false; update(); }
+    function append(v) {
+      if (reset) { current = '0'; reset = false; }
+      if (v === '.' && current.includes('.')) return;
+      current = (current === '0' && v !== '.') ? v : current + v;
+      update();
+    }
+    function setOp(o) {
+      if (op && !reset) calculate();
+      prev = parseFloat(current);
+      op = o;
+      reset = true;
+    }
+    function calculate() {
+      if (op === null || prev === null) return;
+      const a = prev, b = parseFloat(current);
+      let r;
+      if (op === '+') r = a + b;
+      else if (op === '-') r = a - b;
+      else if (op === '*') r = a * b;
+      else if (op === '/') r = b === 0 ? 'خطأ' : a / b;
+      current = String(r);
+      op = null; prev = null; reset = true;
+      update();
+    }
+  </script>
+</body>
+</html>

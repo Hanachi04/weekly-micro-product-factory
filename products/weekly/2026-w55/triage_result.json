@@ -1,0 +1,15 @@
+{
+  "status": "approved",
+  "reason": null,
+  "reason_code": null,
+  "user_message": "تم قبول فكرتك: **منتج تجريبي** ✅\n\nستدخل قائمة التصويت للدورة الأسبوعية. أضف 👍 على تعليق التصويت لدعمها.\n\nشكراً لمساهمتك في مصنع المنتجات المصغرة! 🏭✨",
+  "normalized_title": "منتج تجريبي",
+  "normalized_description": "وصف قصير للمنتج التجريبي",
+  "category": "",
+  "constraints": "",
+  "summary": "منتج تجريبي: وصف قصير للمنتج التجريبي",
+  "security_flags": [],
+  "source": "github_issue",
+  "issue_number": null,
+  "lang": "ar"
+}

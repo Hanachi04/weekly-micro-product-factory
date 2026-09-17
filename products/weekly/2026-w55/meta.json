@@ -1,0 +1,26 @@
+{
+  "week": "2026-w55",
+  "title": "منتج تجريبي",
+  "description": "وصف قصير للمنتج التجريبي",
+  "path": "calculator",
+  "build_method": "ai_generated",
+  "generated_at": "2026-09-17T19:02:38Z",
+  "source_issue_number": null,
+  "lang": "ar",
+  "quality_score": null,
+  "diversity_score": 72.0,
+  "critic_score": 8.5,
+  "critic_verdict": "approved",
+  "critic_report": {
+    "score": 8.5,
+    "verdict": "approved",
+    "issues": [],
+    "suggestions": []
+  },
+  "diversity_components": {
+    "color": 67.0,
+    "structure": 57.5,
+    "text": 100.0,
+    "type": 62.5
+  }
+}

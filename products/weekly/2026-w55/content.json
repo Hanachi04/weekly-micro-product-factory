@@ -1,0 +1,20 @@
+{
+  "title": "منتج تجريبي",
+  "description": "وصف قصير للمنتج التجريبي",
+  "cta_primary": "ابدأ",
+  "cta_secondary": "إعادة",
+  "labels": {
+    "input": "أدخل قيمة",
+    "result": "النتيجة",
+    "status": "الحالة"
+  },
+  "messages": {
+    "success": "تم بنجاح",
+    "error": "حدث خطأ، حاول مرة أخرى",
+    "empty": "لا توجد بيانات بعد"
+  },
+  "footer": "منتج من مصنع المنتجات المصغرة الأسبوعي",
+  "source": "fallback",
+  "tone_applied": "أسلوب كتابة غير رسمي ومتحمس، يركز على إثارة الفضول ويشجع المستخدم على تجربة المنتج",
+  "error": "Expecting ',' delimiter: line 1 column 551 (char 550)"
+}
