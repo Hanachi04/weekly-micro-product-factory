@@ -1,0 +1,15 @@
+{
+  "status": "approved",
+  "reason": null,
+  "reason_code": null,
+  "user_message": "تم قبول فكرتك: **بطاقة شكر بسيطة** ✅\n\nستدخل قائمة التصويت للدورة الأسبوعية. أضف 👍 على تعليق التصويت لدعمها.\n\nشكراً لمساهمتك في مصنع المنتجات المصغرة! 🏭✨",
+  "normalized_title": "بطاقة شكر بسيطة",
+  "normalized_description": "صفحة لكتابة رسالة شكر قصيرة مع اسم المستلم وتصميم هادي",
+  "category": "",
+  "constraints": "",
+  "summary": "بطاقة شكر بسيطة: صفحة لكتابة رسالة شكر قصيرة مع اسم المستلم وتصميم هادي",
+  "security_flags": [],
+  "source": "github_issue",
+  "issue_number": null,
+  "lang": "ar"
+}
