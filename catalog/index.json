@@ -1,6 +1,19 @@
 {
   "products": [
     {
+      "week": "2026-w46",
+      "title": "صفحة هبوط بسيطة",
+      "description": "صفحة هبوط خفيفة وسريعة متوافقة مع الهاتف",
+      "path": "products/weekly/2026-w46",
+      "template": "landing-page",
+      "build_method": "deterministic",
+      "generated_at": "2026-09-17T16:39:15Z",
+      "source_issue_number": null,
+      "diversity_tags": [],
+      "votes": null,
+      "lang": "en"
+    },
+    {
       "week": "2026-w45",
       "title": "صفحة هبوط بسيطة",
       "description": "صفحة هبوط خفيفة وسريعة متوافقة مع الهاتف",
@@ -42,6 +55,6 @@
       "generated_at": "2026-09-17T14:17:08Z"
     }
   ],
-  "last_updated": "2026-09-17T16:37:31Z",
-  "total_count": 4
+  "last_updated": "2026-09-17T16:39:15Z",
+  "total_count": 5
 }

@@ -1,0 +1,12 @@
+{
+  "week": "2026-w46",
+  "title": "صفحة هبوط بسيطة",
+  "description": "صفحة هبوط خفيفة وسريعة متوافقة مع الهاتف",
+  "path": "landing-page",
+  "build_method": "deterministic",
+  "generated_at": "2026-09-17T16:39:15Z",
+  "source_issue_number": null,
+  "lang": "en",
+  "quality_score": null,
+  "diversity_score": null
+}
