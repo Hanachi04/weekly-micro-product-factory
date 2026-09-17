@@ -249,12 +249,12 @@ jobs:
         id: triage
         run: |
           echo "🔍 Running Triage Agent..."
-          python agents/triage_agent.py \
-            --title "${{ needs.prepare.outputs.idea_title }}" \
-            --description "${{ needs.prepare.outputs.idea_description }}" \
-            --source github_issue \
-            --issue-number "${{ needs.prepare.outputs.source_issue_number }}" \
-            --output triage_result.json
+          TITLE="${{ needs.prepare.outputs.idea_title }}"
+          DESC="${{ needs.prepare.outputs.idea_description }}"
+          ISSUE="${{ needs.prepare.outputs.source_issue_number }}"
+          EXTRA=""
+          if [ -n "$ISSUE" ]; then EXTRA="--issue-number $ISSUE"; fi
+          python agents/triage_agent.py             --title "$TITLE"             --description "$DESC"             --source github_issue             --lang "$FACTORY_LANG"             $EXTRA             --output triage_result.json
           echo "──────── triage_result.json ────────"
           cat triage_result.json
           STATUS=$(python3 -c "import json; print(json.load(open('triage_result.json'))['status'])")

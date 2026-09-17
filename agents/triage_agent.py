@@ -156,7 +156,7 @@ def main() -> int:
     parser.add_argument("--issue-body", default="")
     parser.add_argument("--issue-title", default="")
     parser.add_argument("--source", default="manual")
-    parser.add_argument("--issue-number", type=int, default=0)
+    parser.add_argument("--issue-number", default="")
     parser.add_argument("--lang", default="")
     parser.add_argument("--stdin", action="store_true")
     parser.add_argument("--output", "-o", default="")
@@ -185,7 +185,7 @@ def main() -> int:
             category=fields["category"],
             constraints=fields["constraints"],
             source=args.source or "github_issue",
-            issue_number=args.issue_number or None,
+            issue_number=int(args.issue_number) if str(args.issue_number).isdigit() else None,
             lang=lang,
         )
     else:
@@ -195,7 +195,7 @@ def main() -> int:
             category=args.category,
             constraints=args.constraints,
             source=args.source,
-            issue_number=args.issue_number or None,
+            issue_number=int(args.issue_number) if str(args.issue_number).isdigit() else None,
             lang=lang,
         )
 
