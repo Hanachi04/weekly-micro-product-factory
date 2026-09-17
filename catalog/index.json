@@ -1,6 +1,22 @@
 {
   "products": [
     {
+      "week": "2026-w52",
+      "title": "متتبع العادات الأسبوعي",
+      "description": "تتبع عادة واحدة على مدار 7 أيام مع حفظ محلي بدون إنترنت",
+      "path": "products/weekly/2026-w52",
+      "template": "weekly-tracker",
+      "build_method": "deterministic",
+      "generated_at": "2026-09-17T18:11:50Z",
+      "source_issue_number": null,
+      "diversity_tags": [],
+      "votes": null,
+      "lang": "ar",
+      "diversity_score": 81.7,
+      "critic_score": null,
+      "critic_verdict": null
+    },
+    {
       "week": "2026-w51",
       "title": "حاسبة بسيطة",
       "description": "حاسبة أساسية للعمليات الأربع تعمل بدون إنترنت",
@@ -134,6 +150,6 @@
       "generated_at": "2026-09-17T14:17:08Z"
     }
   ],
-  "last_updated": "2026-09-17T18:09:42Z",
-  "total_count": 9
+  "last_updated": "2026-09-17T18:11:51Z",
+  "total_count": 10
 }
