@@ -1,6 +1,22 @@
 {
   "products": [
     {
+      "week": "2026-w54",
+      "title": "حاسبة بسيطة",
+      "description": "حاسبة أساسية للعمليات الأربع تعمل بدون إنترنت",
+      "path": "products/weekly/2026-w54",
+      "template": "calculator",
+      "build_method": "deterministic",
+      "generated_at": "2026-09-17T18:40:18Z",
+      "source_issue_number": null,
+      "diversity_tags": [],
+      "votes": null,
+      "lang": "ar",
+      "diversity_score": 73.3,
+      "critic_score": null,
+      "critic_verdict": null
+    },
+    {
       "week": "2026-w53",
       "title": "صفحة هبوط بسيطة",
       "description": "صفحة هبوط خفيفة وسريعة متوافقة مع الهاتف",
@@ -166,6 +182,6 @@
       "generated_at": "2026-09-17T14:17:08Z"
     }
   ],
-  "last_updated": "2026-09-17T18:19:28Z",
-  "total_count": 11
+  "last_updated": "2026-09-17T18:40:19Z",
+  "total_count": 12
 }
