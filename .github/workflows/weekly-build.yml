@@ -69,8 +69,8 @@ jobs:
             echo "Computed week_id: $WEEK_ID"
           fi
 
-          if ! echo "$WEEK_ID" | grep -qE '^[0-9]{4}-w[0-9]{1,2}$'; then
-            echo "Invalid week_id format: $WEEK_ID (expected YYYY-wNN)"
+          if ! echo "$WEEK_ID" | grep -qE '^[0-9]{4}-w[0-9]{1,2}(-i[0-9]+)?$'; then
+            echo "Invalid week_id format: $WEEK_ID (expected YYYY-wNN or YYYY-wNN-iN)"
             exit 1
           fi
 
