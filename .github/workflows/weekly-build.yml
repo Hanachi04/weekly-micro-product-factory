@@ -1,0 +1,370 @@
+name: بناء المنتج الأسبوعي (المسار الحتمي)
+
+on:
+  schedule:
+    # كل يوم اثنين الساعة 09:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      week_id:
+        description: 'معرف الأسبوع (الصيغة YYYY-wNN) — اتركه فارغاً للأسبوع الحالي'
+        required: false
+        type: string
+        default: ''
+      template_name:
+        description: 'اسم القالب الحتمي'
+        required: false
+        type: choice
+        options:
+          - ''
+          - calculator
+          - landing-page
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Job 1: التحضير
+  # ─────────────────────────────────────────────
+  prepare:
+    name: 🔧 تحضير الدورة
+    runs-on: ubuntu-latest
+    outputs:
+      week_id: ${{ steps.set_week.outputs.week_id }}
+      target_path: ${{ steps.set_week.outputs.target_path }}
+      template_name: ${{ steps.choose_template.outputs.template_name }}
+    steps:
+      - name: 📥 سحب المستودع
+        uses: actions/checkout@v4
+
+      - name: 📅 تحديد معرف الأسبوع
+        id: set_week
+        run: |
+          if [ -n "${{ github.event.inputs.week_id }}" ]; then
+            WEEK_ID="${{ github.event.inputs.week_id }}"
+            echo "📌 تم استخدام week_id من المدخلات: $WEEK_ID"
+          else
+            YEAR=$(date -u +%Y)
+            WEEK=$(date -u +%V)
+            WEEK=$((10#$WEEK))
+            WEEK_ID="${YEAR}-w${WEEK}"
+            echo "📌 تم حساب week_id تلقائياً: $WEEK_ID"
+          fi
+
+          if ! echo "$WEEK_ID" | grep -qE '^[0-9]{4}-w[0-9]{1,2}$'; then
+            echo "❌ صيغة week_id غير صحيحة: $WEEK_ID (المتوقع: YYYY-wNN)"
+            exit 1
+          fi
+
+          TARGET_PATH="products/weekly/${WEEK_ID}"
+          echo "week_id=${WEEK_ID}" >> $GITHUB_OUTPUT
+          echo "target_path=${TARGET_PATH}" >> $GITHUB_OUTPUT
+          echo "✅ week_id = $WEEK_ID"
+          echo "✅ target_path = $TARGET_PATH"
+
+      - name: 🛑 التحقق من عدم وجود المنتج مسبقاً
+        run: |
+          TARGET="${{ steps.set_week.outputs.target_path }}"
+          if [ -d "$TARGET" ] && [ "$(ls -A $TARGET 2>/dev/null)" ]; then
+            echo "❌ المجلد $TARGET موجود مسبقاً ويحتوي على ملفات."
+            echo "⚠️  لا يُسمح بالكتابة فوق منتج سابق. استخدم week_id مختلفاً."
+            exit 1
+          fi
+          echo "✅ المجلد غير موجود أو فارغ — يمكن المتابعة."
+
+      - name: 🎲 اختيار القالب
+        id: choose_template
+        run: |
+          INPUT_TEMPLATE="${{ github.event.inputs.template_name }}"
+          if [ -n "$INPUT_TEMPLATE" ]; then
+            TEMPLATE="$INPUT_TEMPLATE"
+            echo "📌 تم اختيار القالب من المدخلات: $TEMPLATE"
+          else
+            TEMPLATES=($(ls -d templates/*/ 2>/dev/null | xargs -n1 basename))
+            if [ ${#TEMPLATES[@]} -eq 0 ]; then
+              echo "❌ لا توجد قوالب في مجلد templates/"
+              exit 1
+            fi
+            IDX=$((RANDOM % ${#TEMPLATES[@]}))
+            TEMPLATE="${TEMPLATES[$IDX]}"
+            echo "🎲 تم اختيار قالب عشوائي: $TEMPLATE"
+          fi
+
+          if [ ! -d "templates/$TEMPLATE" ]; then
+            echo "❌ القالب templates/$TEMPLATE غير موجود"
+            exit 1
+          fi
+          if [ ! -f "templates/$TEMPLATE/index.html" ]; then
+            echo "❌ الملف templates/$TEMPLATE/index.html غير موجود"
+            exit 1
+          fi
+
+          echo "template_name=${TEMPLATE}" >> $GITHUB_OUTPUT
+          echo "✅ القالب المختار: $TEMPLATE"
+
+  # ─────────────────────────────────────────────
+  # Job 2: البناء
+  # ─────────────────────────────────────────────
+  build:
+    name: 🏗️ بناء المنتج
+    needs: prepare
+    runs-on: ubuntu-latest
+    outputs:
+      product_size: ${{ steps.copy.outputs.product_size }}
+    steps:
+      - name: 📥 سحب المستودع
+        uses: actions/checkout@v4
+
+      - name: 📂 نسخ القالب وإنشاء meta.json
+        id: copy
+        run: |
+          WEEK_ID="${{ needs.prepare.outputs.week_id }}"
+          TARGET="${{ needs.prepare.outputs.target_path }}"
+          TEMPLATE="${{ needs.prepare.outputs.template_name }}"
+
+          echo "📦 بدء بناء المنتج للأسبوع: $WEEK_ID"
+          echo "📌 القالب: $TEMPLATE"
+          echo "📌 المسار: $TARGET"
+
+          mkdir -p "$TARGET"
+          cp "templates/$TEMPLATE/index.html" "$TARGET/index.html"
+
+          if [ -f "templates/$TEMPLATE/meta.json" ]; then
+            TITLE=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('name', '$TEMPLATE'))")
+            DESC=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('description', ''))")
+          else
+            TITLE="$TEMPLATE"
+            DESC="منتج حتمي من القالب $TEMPLATE"
+          fi
+
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          python3 -c "
+          import json
+          data = {
+            'week': '$WEEK_ID',
+            'title': '''$TITLE''',
+            'description': '''$DESC''',
+            'path': '$TEMPLATE',
+            'build_method': 'deterministic',
+            'generated_at': '$TIMESTAMP',
+            'quality_score': None,
+            'diversity_score': None
+          }
+          with open('$TARGET/meta.json', 'w', encoding='utf-8') as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+          "
+
+          SIZE=$(du -sb "$TARGET" | cut -f1)
+          SIZE_KB=$((SIZE / 1024))
+          echo "product_size=${SIZE}" >> $GITHUB_OUTPUT
+
+          echo "✅ تم نسخ القالب وإنشاء meta.json"
+          echo "📊 حجم المنتج: ${SIZE_KB} KB (${SIZE} بايت)"
+
+          if [ "$SIZE" -gt 81920 ]; then
+            echo "❌ الحجم يتجاوز 80 KB (${SIZE} بايت > 81920)"
+            exit 1
+          fi
+          echo "✅ الحجم ضمن الحد المسموح (< 80 KB)"
+
+      - name: 📋 عرض محتوى المنتج
+        run: |
+          TARGET="${{ needs.prepare.outputs.target_path }}"
+          echo "─── محتويات $TARGET ───"
+          ls -la "$TARGET"
+          echo ""
+          echo "─── meta.json ───"
+          cat "$TARGET/meta.json"
+
+  # ─────────────────────────────────────────────
+  # Job 3: التحقق
+  # ─────────────────────────────────────────────
+  validate:
+    name: 🔍 التحقق من الجودة
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 سحب المستودع
+        uses: actions/checkout@v4
+
+      - name: 📄 التحقق من وجود الملفات الأساسية
+        run: |
+          TEMPLATE="${{ needs.prepare.outputs.template_name }}"
+
+          echo "🔍 التحقق من القالب المصدر..."
+          if [ ! -f "templates/$TEMPLATE/index.html" ]; then
+            echo "❌ index.html مفقود في القالب"
+            exit 1
+          fi
+          echo "✅ index.html موجود"
+
+          if ! grep -qi '<!DOCTYPE html>' "templates/$TEMPLATE/index.html"; then
+            echo "⚠️  تحذير: لا يوجد DOCTYPE"
+          fi
+          if ! grep -qi '<html' "templates/$TEMPLATE/index.html"; then
+            echo "❌ وسم <html> مفقود"
+            exit 1
+          fi
+          if ! grep -qi '<body' "templates/$TEMPLATE/index.html"; then
+            echo "❌ وسم <body> مفقود"
+            exit 1
+          fi
+          echo "✅ هيكل HTML أساسي سليم"
+
+          if ! grep -qi 'dir="rtl"' "templates/$TEMPLATE/index.html" && ! grep -qi "dir='rtl'" "templates/$TEMPLATE/index.html"; then
+            echo "⚠️  تحذير: لم يُعثر على dir=rtl (يُفضل دعم العربية)"
+          else
+            echo "✅ دعم RTL موجود"
+          fi
+
+          echo "✅ اجتياز فحوصات التحقق الأساسية"
+
+      - name: 📦 التحقق من حجم القالب
+        run: |
+          TEMPLATE="${{ needs.prepare.outputs.template_name }}"
+          SIZE=$(du -sb "templates/$TEMPLATE" | cut -f1)
+          SIZE_KB=$((SIZE / 1024))
+          echo "📊 حجم القالب: ${SIZE_KB} KB"
+          if [ "$SIZE" -gt 81920 ]; then
+            echo "❌ الحجم يتجاوز 80 KB"
+            exit 1
+          fi
+          echo "✅ الحجم مقبول"
+
+  # ─────────────────────────────────────────────
+  # Job 4: النشر
+  # ─────────────────────────────────────────────
+  publish:
+    name: 🚀 نشر المنتج
+    needs: [prepare, build, validate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 سحب المستودع
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏗️ تجهيز ملفات المنتج
+        run: |
+          WEEK_ID="${{ needs.prepare.outputs.week_id }}"
+          TARGET="${{ needs.prepare.outputs.target_path }}"
+          TEMPLATE="${{ needs.prepare.outputs.template_name }}"
+
+          mkdir -p "$TARGET"
+          cp "templates/$TEMPLATE/index.html" "$TARGET/index.html"
+
+          if [ -f "templates/$TEMPLATE/meta.json" ]; then
+            TITLE=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('name', '$TEMPLATE'))")
+            DESC=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('description', ''))")
+          else
+            TITLE="$TEMPLATE"
+            DESC="منتج حتمي من القالب $TEMPLATE"
+          fi
+
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          python3 -c "
+          import json
+          data = {
+            'week': '$WEEK_ID',
+            'title': '''$TITLE''',
+            'description': '''$DESC''',
+            'path': '$TEMPLATE',
+            'build_method': 'deterministic',
+            'generated_at': '$TIMESTAMP',
+            'quality_score': None,
+            'diversity_score': None
+          }
+          with open('$TARGET/meta.json', 'w', encoding='utf-8') as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+          "
+          echo "✅ تم تجهيز ملفات المنتج"
+
+      - name: 📚 تحديث الكتالوج
+        run: |
+          WEEK_ID="${{ needs.prepare.outputs.week_id }}"
+          TARGET="${{ needs.prepare.outputs.target_path }}"
+          TEMPLATE="${{ needs.prepare.outputs.template_name }}"
+
+          python3 << PY
+          import json, os
+          from datetime import datetime, timezone
+
+          catalog_path = "catalog/index.json"
+          week_id = "${{ needs.prepare.outputs.week_id }}"
+          template = "${{ needs.prepare.outputs.template_name }}"
+          target = "${{ needs.prepare.outputs.target_path }}"
+
+          with open(f"{target}/meta.json", encoding="utf-8") as f:
+              product_meta = json.load(f)
+
+          if os.path.exists(catalog_path):
+              with open(catalog_path, encoding="utf-8") as f:
+                  catalog = json.load(f)
+          else:
+              catalog = {"products": [], "last_updated": None, "total_count": 0}
+
+          catalog["products"] = [p for p in catalog.get("products", []) if p.get("week") != week_id]
+
+          entry = {
+              "week": product_meta["week"],
+              "title": product_meta["title"],
+              "description": product_meta["description"],
+              "path": target,
+              "template": template,
+              "build_method": "deterministic",
+              "generated_at": product_meta["generated_at"]
+          }
+          catalog["products"].insert(0, entry)
+          catalog["total_count"] = len(catalog["products"])
+          catalog["last_updated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+          with open(catalog_path, "w", encoding="utf-8") as f:
+              json.dump(catalog, f, ensure_ascii=False, indent=2)
+
+          print("✅ تم تحديث catalog/index.json")
+          print(f"📊 إجمالي المنتجات: {catalog['total_count']}")
+          PY
+
+      - name: 💾 Commit و Push
+        run: |
+          WEEK_ID="${{ needs.prepare.outputs.week_id }}"
+          TARGET="${{ needs.prepare.outputs.target_path }}"
+
+          git config user.name "Micro Product Factory"
+          git config user.email "factory@users.noreply.github.com"
+
+          git add "$TARGET" catalog/index.json
+          git status
+
+          if git diff --staged --quiet; then
+            echo "⚠️  لا توجد تغييرات للـ commit"
+          else
+            git commit -m "feat(product): نشر منتج الأسبوع ${WEEK_ID} (مسار حتمي)
+
+- القالب: ${{ needs.prepare.outputs.template_name }}
+- المسار: ${TARGET}
+- البناء: deterministic"
+            git push
+            echo "✅ تم الدفع إلى المستودع"
+          fi
+
+      - name: 📢 ملخص النشر
+        run: |
+          WEEK_ID="${{ needs.prepare.outputs.week_id }}"
+          TEMPLATE="${{ needs.prepare.outputs.template_name }}"
+          REPO="${{ github.repository }}"
+          BRANCH="${{ github.ref_name }}"
+
+          echo ""
+          echo "════════════════════════════════════════"
+          echo "✅ تم نشر المنتج بنجاح"
+          echo "════════════════════════════════════════"
+          echo "📅 الأسبوع     : $WEEK_ID"
+          echo "📦 القالب     : $TEMPLATE"
+          echo "🔗 رابط المنتج : https://github.com/${REPO}/tree/${BRANCH}/products/weekly/${WEEK_ID}"
+          echo "📄 الصفحة     : https://github.com/${REPO}/blob/${BRANCH}/products/weekly/${WEEK_ID}/index.html"
+          echo "════════════════════════════════════════"
