@@ -34,6 +34,11 @@ on:
         required: false
         type: string
         default: 'وصف قصير للمنتج التجريبي'
+      source_issue_number:
+        description: 'GitHub Issue number that triggered this build (optional)'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -262,21 +267,24 @@ jobs:
 
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          python3 << PY
-          import json
+          export B_TITLE="$TITLE" B_DESC="$DESC" B_WEEK="$WEEK_ID" B_TEMPLATE="$TEMPLATE" B_METHOD="$BUILD_METHOD" B_TS="$TIMESTAMP" B_TARGET="$TARGET" B_ISSUE="${{ inputs.source_issue_number }}"
+          python3 -c "
+          import json, os
+          issue = os.environ.get('B_ISSUE') or None
           data = {
-            "week": "$WEEK_ID",
-            "title": """$TITLE""",
-            "description": """$DESC""",
-            "path": "$TEMPLATE",
-            "build_method": "$BUILD_METHOD",
-            "generated_at": "$TIMESTAMP",
-            "quality_score": None,
-            "diversity_score": None
+            'week': os.environ['B_WEEK'],
+            'title': os.environ['B_TITLE'],
+            'description': os.environ['B_DESC'],
+            'path': os.environ['B_TEMPLATE'],
+            'build_method': os.environ['B_METHOD'],
+            'generated_at': os.environ['B_TS'],
+            'source_issue_number': issue if issue else None,
+            'quality_score': None,
+            'diversity_score': None,
           }
-          with open("$TARGET/meta.json", "w", encoding="utf-8") as f:
+          with open(os.environ['B_TARGET'] + '/meta.json', 'w', encoding='utf-8') as f:
               json.dump(data, f, ensure_ascii=False, indent=2)
-          PY
+          "
 
           SIZE=$(du -sb "$TARGET" | cut -f1)
           SIZE_KB=$((SIZE / 1024))
@@ -433,7 +441,8 @@ jobs:
           if [ -z "$TITLE" ]; then TITLE="$TEMPLATE"; fi
           if [ -z "$DESC" ]; then DESC="Weekly micro-product"; fi
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          export P_TITLE="$TITLE" P_DESC="$DESC" P_WEEK="$WEEK_ID" P_TEMPLATE="$TEMPLATE" P_METHOD="$BUILD_METHOD" P_TS="$TIMESTAMP" P_TARGET="$TARGET"
+          ISSUE_NO="${{ inputs.source_issue_number }}"
+          export P_TITLE="$TITLE" P_DESC="$DESC" P_WEEK="$WEEK_ID" P_TEMPLATE="$TEMPLATE" P_METHOD="$BUILD_METHOD" P_TS="$TIMESTAMP" P_TARGET="$TARGET" P_ISSUE="$ISSUE_NO"
           python3 -c "
           import json, os
           data = {
@@ -443,6 +452,7 @@ jobs:
             'path': os.environ['P_TEMPLATE'],
             'build_method': os.environ['P_METHOD'],
             'generated_at': os.environ['P_TS'],
+            'source_issue_number': os.environ.get('P_ISSUE') or None,
             'quality_score': None,
             'diversity_score': None,
           }
@@ -481,8 +491,9 @@ jobs:
               "description": product_meta["description"],
               "path": target,
               "template": template,
-              "build_method": "deterministic",
-              "generated_at": product_meta["generated_at"]
+              "build_method": product_meta.get("build_method", "deterministic"),
+              "generated_at": product_meta["generated_at"],
+              "source_issue_number": product_meta.get("source_issue_number"),
           }
           catalog["products"].insert(0, entry)
           catalog["total_count"] = len(catalog["products"])

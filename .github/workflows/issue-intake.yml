@@ -1,0 +1,128 @@
+name: issue-intake
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+  actions: write
+
+jobs:
+  triage-issue:
+    name: Triage new idea
+    runs-on: ubuntu-latest
+    # Only process issues that look like product ideas (label or title prefix)
+    if: >
+      contains(join(github.event.issue.labels.*.name, ','), 'idea') ||
+      startsWith(github.event.issue.title, '[فكرة]') ||
+      startsWith(github.event.issue.title, '[فكره]')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Daily intake rate limit (max 5)
+        id: rate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          # Count workflow runs of this workflow started today
+          COUNT=$(gh api "repos/${{ github.repository }}/actions/workflows/issue-intake.yml/runs?per_page=30" \
+            --jq "[.workflow_runs[] | select(.created_at | startswith(\"$TODAY\"))] | length" 2>/dev/null || echo 0)
+          echo "Intake runs today: $COUNT"
+          if [ "$COUNT" -gt 5 ]; then
+            echo "over_limit=true" >> "$GITHUB_OUTPUT"
+            echo "⚠️ Daily intake limit reached (5). Skipping build trigger."
+          else
+            echo "over_limit=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Triage Agent
+        id: triage
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          echo "🔍 Sorting issue #$ISSUE_NUMBER ..."
+          # Write body to file to avoid shell escaping issues
+          printf '%s' "$ISSUE_BODY" > /tmp/issue_body.txt
+          python agents/triage_agent.py \
+            --issue-body "$(cat /tmp/issue_body.txt)" \
+            --issue-title "$ISSUE_TITLE" \
+            --source github_issue \
+            --issue-number "$ISSUE_NUMBER" \
+            --output triage_result.json
+          echo "──────── triage_result.json ────────"
+          cat triage_result.json
+          STATUS=$(python3 -c "import json; print(json.load(open('triage_result.json'))['status'])")
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          python3 -c "
+          import json
+          d=json.load(open('triage_result.json'))
+          # Write message to file for gh comment (preserve newlines)
+          open('/tmp/user_message.md','w',encoding='utf-8').write(d.get('user_message') or '')
+          open('/tmp/norm_title.txt','w',encoding='utf-8').write(d.get('normalized_title') or '')
+          open('/tmp/norm_desc.txt','w',encoding='utf-8').write(d.get('normalized_description') or '')
+          "
+
+      - name: Comment and close if rejected
+        if: steps.triage.outputs.status == 'rejected'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body-file /tmp/user_message.md
+          gh issue edit ${{ github.event.issue.number }} \
+            --add-label "rejected" \
+            --remove-label "needs-triage" || true
+          gh issue close ${{ github.event.issue.number }} --reason "not planned" \
+            --comment "أُغلق تلقائياً بعد رفض بوابة الفرز. يمكنك تعديل الفكرة وفتح Issue جديد."
+          echo "❌ Issue rejected and closed"
+
+      - name: Approve, label, and trigger build
+        if: steps.triage.outputs.status == 'approved'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body-file /tmp/user_message.md
+          gh issue edit ${{ github.event.issue.number }} \
+            --add-label "approved" \
+            --remove-label "needs-triage" || true
+
+          if [ "${{ steps.rate.outputs.over_limit }}" = "true" ]; then
+            gh issue comment ${{ github.event.issue.number }} --body "✅ الفكرة مقبولة، لكن تم بلوغ الحد اليومي (5 أفكار). سيتم إدراجها في أقرب دورة لاحقة يدوياً."
+            echo "Rate limited — skip dispatch"
+            exit 0
+          fi
+
+          TITLE=$(cat /tmp/norm_title.txt)
+          DESC=$(cat /tmp/norm_desc.txt)
+          ISSUE_NO="${{ github.event.issue.number }}"
+
+          # Compute next week id (ISO week)
+          WEEK_ID=$(date -u +%Y-w%V)
+          # Avoid collision: append issue number suffix for uniqueness in same week
+          WEEK_ID="${WEEK_ID}-i${ISSUE_NO}"
+
+          echo "🚀 Dispatching weekly-build for issue #$ISSUE_NO"
+          echo "  title=$TITLE"
+          echo "  week_id=$WEEK_ID"
+
+          gh workflow run weekly-build.yml \
+            --ref main \
+            -f enable_ai=true \
+            -f idea_title="$TITLE" \
+            -f idea_description="$DESC" \
+            -f week_id="$WEEK_ID" \
+            -f template_name=weekly-tracker \
+            -f source_issue_number="$ISSUE_NO"
+
+          gh issue comment ${{ github.event.issue.number }} --body "🏭 بدأت دورة الإنتاج الذكية (week: \`$WEEK_ID\`). راقب التقدم في تبويب Actions."
+          echo "✅ Build dispatched"
