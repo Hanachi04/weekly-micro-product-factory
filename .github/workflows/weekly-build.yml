@@ -163,7 +163,6 @@ jobs:
       - name: Resolve idea source
         id: resolve_idea
         run: |
-          # Prefer explicit dispatch inputs; else selected community idea; else defaults
           INPUT_TITLE="${{ github.event.inputs.idea_title }}"
           INPUT_DESC="${{ github.event.inputs.idea_description }}"
           INPUT_ISSUE="${{ github.event.inputs.source_issue_number }}"
@@ -172,35 +171,20 @@ jobs:
           SEL_DESC="${{ needs.select-idea.outputs.idea_description }}"
           SEL_ISSUE="${{ needs.select-idea.outputs.issue_number }}"
           SEL_OK="${{ needs.select-idea.outputs.selected }}"
+          EVENT="${{ github.event_name }}"
 
-          if [ "${{ github.event_name }}" = "schedule" ] && { [ "$SEL_OK" = "true" ] || [ "$SEL_OK" = "True" ]; }; then
-            echo "Using community-voted idea from issue #$SEL_ISSUE"
+          echo "debug AI=$INPUT_AI title=$INPUT_TITLE event=$EVENT sel=$SEL_OK"
+
+          if [ "$EVENT" = "schedule" ] && { [ "$SEL_OK" = "true" ] || [ "$SEL_OK" = "True" ]; }; then
+            echo "Community-voted idea #$SEL_ISSUE"
             echo "idea_title=$SEL_TITLE" >> "$GITHUB_OUTPUT"
-            {
-              echo "idea_description<<EOF"
-              echo "$SEL_DESC"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
+            { echo "idea_description<<EOF"; echo "$SEL_DESC"; echo "EOF"; } >> "$GITHUB_OUTPUT"
             echo "source_issue_number=$SEL_ISSUE" >> "$GITHUB_OUTPUT"
             echo "use_ai=true" >> "$GITHUB_OUTPUT"
-          elif [ "$INPUT_AI" = "true" ] && [ -n "$INPUT_TITLE" ] && [ "$INPUT_TITLE" != "منتج تجريبي" ]; then
-            echo "Using dispatch idea inputs"
-            echo "idea_title=$INPUT_TITLE" >> "$GITHUB_OUTPUT"
-            {
-              echo "idea_description<<EOF"
-              echo "$INPUT_DESC"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
-            echo "source_issue_number=$INPUT_ISSUE" >> "$GITHUB_OUTPUT"
-            echo "use_ai=true" >> "$GITHUB_OUTPUT"
           elif [ "$INPUT_AI" = "true" ]; then
-            echo "AI enabled with default/demo idea"
+            echo "Dispatch AI path"
             echo "idea_title=$INPUT_TITLE" >> "$GITHUB_OUTPUT"
-            {
-              echo "idea_description<<EOF"
-              echo "$INPUT_DESC"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
+            { echo "idea_description<<EOF"; echo "$INPUT_DESC"; echo "EOF"; } >> "$GITHUB_OUTPUT"
             echo "source_issue_number=$INPUT_ISSUE" >> "$GITHUB_OUTPUT"
             echo "use_ai=true" >> "$GITHUB_OUTPUT"
           else
@@ -240,7 +224,7 @@ jobs:
   smart-agents:
     name: Smart Agents
     needs: prepare
-    if: ${{ needs.prepare.outputs.use_ai == 'true' }}
+    if: ${{ needs.prepare.outputs.use_ai == 'true' || (github.event_name == 'workflow_dispatch' && inputs.enable_ai == true) }}
     runs-on: ubuntu-latest
     env:
       FACTORY_LANG: ${{ github.event.inputs.lang || vars.FACTORY_LANG || 'ar' }}
