@@ -657,6 +657,55 @@ jobs:
           ls -la "$TARGET"
           cat "$TARGET/meta.json"
 
+      - name: Attach critic and diversity scores to meta
+        if: success()
+        continue-on-error: true
+        env:
+          TARGET: ${{ needs.prepare.outputs.target_path }}
+        run: |
+          mkdir -p "$TARGET"
+          if [ -f ai_out/critic_report.json ]; then
+            cp ai_out/critic_report.json "$TARGET/" || true
+          fi
+          python3 << 'PY'
+          import json, os, pathlib
+          target = os.environ["TARGET"]
+          meta_path = pathlib.Path(target) / "meta.json"
+          if not meta_path.exists():
+              raise SystemExit(0)
+          meta = json.loads(meta_path.read_text(encoding="utf-8"))
+          critic_p = pathlib.Path(target) / "critic_report.json"
+          if not critic_p.exists():
+              critic_p = pathlib.Path("ai_out/critic_report.json")
+          if critic_p.exists():
+              critic = json.loads(critic_p.read_text(encoding="utf-8"))
+              meta["critic_score"] = critic.get("score")
+              meta["critic_verdict"] = critic.get("verdict")
+              meta["critic_report"] = {
+                  "score": critic.get("score"),
+                  "verdict": critic.get("verdict"),
+                  "issues": critic.get("issues") or [],
+                  "suggestions": critic.get("suggestions") or [],
+              }
+              if critic.get("verdict") == "needs_revision":
+                  meta["quality_warning"] = "Published after critic requested revision (max attempts reached)"
+          # diversity from local analyze
+          try:
+              import sys
+              sys.path.insert(0, "agents")
+              from utils.diversity_analyzer import calculate_diversity_score
+              html = (pathlib.Path(target) / "index.html").read_text(encoding="utf-8")
+              catalog = json.loads(pathlib.Path("catalog/index.json").read_text(encoding="utf-8")) if pathlib.Path("catalog/index.json").exists() else {"products": []}
+              div = calculate_diversity_score(html, meta, catalog.get("products") or [])
+              meta["diversity_score"] = div.get("diversity_score")
+              meta["diversity_components"] = div.get("components")
+              pathlib.Path(target, "diversity_analysis.json").write_text(json.dumps(div, ensure_ascii=False, indent=2), encoding="utf-8")
+          except Exception as e:
+              meta["diversity_error"] = str(e)
+          meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+          print(json.dumps({k: meta.get(k) for k in ("critic_score","critic_verdict","diversity_score","quality_warning")}, ensure_ascii=False, indent=2))
+          PY
+
       - name: Update catalog
         run: |
           python3 << 'PY'
@@ -743,53 +792,6 @@ jobs:
           fi
 
 
-
-      - name: Attach critic and diversity scores to meta
-        if: success()
-        continue-on-error: true
-        run: |
-          TARGET="${{ needs.prepare.outputs.target_path }}"
-          if [ -f ai_out/critic_report.json ]; then
-            cp ai_out/critic_report.json "$TARGET/" || true
-          fi
-          python3 << 'PY'
-          import json, os, pathlib
-          target = os.environ.get("TARGET") or "${{ needs.prepare.outputs.target_path }}"
-          meta_path = pathlib.Path(target) / "meta.json"
-          if not meta_path.exists():
-              raise SystemExit(0)
-          meta = json.loads(meta_path.read_text(encoding="utf-8"))
-          critic_p = pathlib.Path(target) / "critic_report.json"
-          if not critic_p.exists():
-              critic_p = pathlib.Path("ai_out/critic_report.json")
-          if critic_p.exists():
-              critic = json.loads(critic_p.read_text(encoding="utf-8"))
-              meta["critic_score"] = critic.get("score")
-              meta["critic_verdict"] = critic.get("verdict")
-              meta["critic_report"] = {
-                  "score": critic.get("score"),
-                  "verdict": critic.get("verdict"),
-                  "issues": critic.get("issues") or [],
-                  "suggestions": critic.get("suggestions") or [],
-              }
-              if critic.get("verdict") == "needs_revision":
-                  meta["quality_warning"] = "Published after critic requested revision (max attempts reached)"
-          # diversity from local analyze
-          try:
-              import sys
-              sys.path.insert(0, "agents")
-              from utils.diversity_analyzer import calculate_diversity_score
-              html = (pathlib.Path(target) / "index.html").read_text(encoding="utf-8")
-              catalog = json.loads(pathlib.Path("catalog/index.json").read_text(encoding="utf-8")) if pathlib.Path("catalog/index.json").exists() else {"products": []}
-              div = calculate_diversity_score(html, meta, catalog.get("products") or [])
-              meta["diversity_score"] = div.get("diversity_score")
-              meta["diversity_components"] = div.get("components")
-              pathlib.Path(target, "diversity_analysis.json").write_text(json.dumps(div, ensure_ascii=False, indent=2), encoding="utf-8")
-          except Exception as e:
-              meta["diversity_error"] = str(e)
-          meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
-          print(json.dumps({k: meta.get(k) for k in ("critic_score","critic_verdict","diversity_score","quality_warning")}, ensure_ascii=False, indent=2))
-          PY
 
       - name: Close source issue as produced
         if: success()
