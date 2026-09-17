@@ -79,33 +79,29 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           python scripts/select_idea.py selected_idea.json
-          SELECTED=$(python3 -c "import json; print(json.load(open('selected_idea.json')).get('selected', False))")
-          echo "selected=$SELECTED" >> "$GITHUB_OUTPUT"
-          if [ "$SELECTED" = "True" ] || [ "$SELECTED" = "true" ]; then
-            python3 -c "
-          import json
-          d=json.load(open('selected_idea.json'))
-          open('/tmp/t','w').write(d.get('idea_title') or '')
-          open('/tmp/d','w').write(d.get('idea_description') or '')
-          print('issue_number=' + str(d.get('issue_number') or ''))
-          print('votes=' + str(d.get('votes') or 0))
-          " >> "$GITHUB_OUTPUT"
-            echo "idea_title=$(cat /tmp/t)" >> "$GITHUB_OUTPUT"
-            # multiline description via EOF
-            {
-              echo "idea_description<<EOF"
-              cat /tmp/d
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
-            echo "Selected issue with votes"
-            cat selected_idea.json
-          else
-            echo "issue_number=" >> "$GITHUB_OUTPUT"
-            echo "idea_title=" >> "$GITHUB_OUTPUT"
-            echo "idea_description=" >> "$GITHUB_OUTPUT"
-            echo "votes=0" >> "$GITHUB_OUTPUT"
-            echo "No approved ideas in queue"
-          fi
+          python3 << 'PY'
+          import json, os, pathlib
+          d = json.load(open("selected_idea.json", encoding="utf-8"))
+          out = os.environ["GITHUB_OUTPUT"]
+          selected = bool(d.get("selected"))
+          with open(out, "a", encoding="utf-8") as f:
+              f.write(f"selected={str(selected).lower()}\n")
+              if selected:
+                  title = (d.get("idea_title") or "").replace("\n", " ").strip()
+                  desc = (d.get("idea_description") or "").replace("\r", "").strip()
+                  f.write(f"issue_number={d.get('issue_number') or ''}\n")
+                  f.write(f"votes={d.get('votes') or 0}\n")
+                  f.write(f"idea_title={title}\n")
+                  f.write("idea_description<<DESC_EOF\n")
+                  f.write(desc + "\n")
+                  f.write("DESC_EOF\n")
+              else:
+                  f.write("issue_number=\n")
+                  f.write("votes=0\n")
+                  f.write("idea_title=\n")
+                  f.write("idea_description=\n")
+          print(json.dumps(d, ensure_ascii=False, indent=2))
+          PY
 
 
   prepare:
