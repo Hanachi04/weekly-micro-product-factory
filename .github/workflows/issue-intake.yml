@@ -13,6 +13,8 @@ jobs:
   triage-issue:
     name: Triage new idea
     runs-on: ubuntu-latest
+    env:
+      FACTORY_LANG: ${{ vars.FACTORY_LANG || 'ar' }}
     # Only process issues that look like product ideas (label or title prefix)
     if: >
       contains(join(github.event.issue.labels.*.name, ','), 'idea') ||
@@ -59,6 +61,7 @@ jobs:
             --issue-title "$ISSUE_TITLE" \
             --source github_issue \
             --issue-number "$ISSUE_NUMBER" \
+            --lang "$FACTORY_LANG" \
             --output triage_result.json
           echo "──────── triage_result.json ────────"
           cat triage_result.json
@@ -83,7 +86,7 @@ jobs:
             --add-label "rejected" \
             --remove-label "needs-triage" || true
           gh issue close ${{ github.event.issue.number }} --reason "not planned" \
-            --comment "أُغلق تلقائياً بعد رفض بوابة الفرز. يمكنك تعديل الفكرة وفتح Issue جديد."
+            --comment "$(python3 -c "import sys; sys.path.insert(0,'agents'); from utils.i18n import get_text; import os; print(get_text('vote.close_reject', os.environ.get('FACTORY_LANG')))")"
           echo "❌ Issue rejected and closed"
 
       - name: Approve, label, and open voting
@@ -96,20 +99,13 @@ jobs:
             --add-label "approved" \
             --remove-label "needs-triage" || true
 
-          # Voting ballot comment (tracked by marker for select_idea.py)
-          cat > /tmp/vote_ballot.md << 'BALLOT'
-          <!-- factory-vote-ballot -->
-          ## 🗳️ صوّت لهذه الفكرة
-
-          أضف تفاعلاً **👍** على **هذا التعليق** لدعم إنتاجها في الدورة الأسبوعية القادمة.
-
-          - صوت واحد لكل حساب GitHub
-          - الفكرة الأعلى تصويتاً تُنتج أولاً (عند التعادل: الأقدم)
-          - يمكنك متابعة النتائج من لوحة الإحصائيات `/stats/`
-
-          شكراً لمساهمتك في توجيه المصنع! 🏭✨
-          BALLOT
-          # un-indent for nice markdown
-          sed -i 's/^          //' /tmp/vote_ballot.md
+          # Voting ballot (localized; marker is language-agnostic)
+          python3 -c "
+          import sys
+          sys.path.insert(0, 'agents')
+          from utils.i18n import get_text
+          import os
+          open('/tmp/vote_ballot.md','w',encoding='utf-8').write(get_text('vote.ballot', os.environ.get('FACTORY_LANG')))
+          "
           gh issue comment ${{ github.event.issue.number }} --body-file /tmp/vote_ballot.md
           echo "✅ Idea approved and voting opened (no immediate build — waits for weekly selection)"

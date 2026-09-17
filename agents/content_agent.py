@@ -22,6 +22,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils.llm_client import generate_text, AllProvidersFailedError, available_providers
+from utils.i18n import get_text, resolve_lang
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger("content_agent")
@@ -76,12 +77,17 @@ def generate_content(
     layout = card.get("required_layout") or ""
     interaction = card.get("interaction_type") or ""
 
+    lang = resolve_lang()
     if not use_llm or not available_providers():
         logger.info("No LLM — using fallback content")
         out = dict(FALLBACK_CONTENT)
-        out["title"] = idea_title or out["title"]
-        out["description"] = (idea_description or out["description"])[:200]
+        out["title"] = idea_title or get_text("content.fallback_title", lang)
+        out["description"] = (idea_description or get_text("content.fallback_description", lang))[:200]
+        out["cta_primary"] = get_text("content.cta_primary", lang)
+        out["cta_secondary"] = get_text("content.cta_secondary", lang)
+        out["footer"] = get_text("content.footer", lang)
         out["tone_applied"] = tone
+        out["lang"] = lang
         return out
 
     prompt = f"""أنشئ نصوص واجهة عربية لمنتج رقمي ثابت (صفحة HTML واحدة).

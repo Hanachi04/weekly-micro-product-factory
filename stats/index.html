@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>لوحة إحصائيات المصنع</title>
+<title>Factory Stats Dashboard</title>
 <style>
-:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8;--ok:#34d399;--warm:#f59e0b}
+:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;padding:1.25rem}
 .wrap{max-width:920px;margin:0 auto}
@@ -17,11 +17,11 @@ h1{font-size:1.5rem;margin-bottom:.35rem}
 .stat .l{font-size:.8rem;color:var(--muted);margin-top:.25rem}
 h2{font-size:1.1rem;margin:1.25rem 0 .75rem}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem}
-.card{display:block;background:var(--card);border-radius:12px;padding:1rem;text-decoration:none;color:inherit;border:1px solid transparent;transition:border-color .15s}
+.card{display:block;background:var(--card);border-radius:12px;padding:1rem;text-decoration:none;color:inherit;border:1px solid transparent}
 .card:hover{border-color:var(--accent)}
 .card .week{font-size:.75rem;color:var(--muted)}
 .card h3{font-size:1rem;margin:.35rem 0}
-.badge{display:inline-block;background:#334155;color:var(--text);font-size:.7rem;padding:.15rem .45rem;border-radius:999px;margin-left:.25rem}
+.badge{display:inline-block;background:#334155;font-size:.7rem;padding:.15rem .45rem;border-radius:999px;margin-inline-start:.25rem}
 .tag{display:inline-block;background:#1e3a5f;color:var(--accent);font-size:.75rem;padding:.2rem .55rem;border-radius:999px;margin:.2rem}
 .muted{color:var(--muted);font-size:.9rem}
 footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #334155;color:var(--muted);font-size:.8rem}
@@ -30,44 +30,33 @@ a.home{color:var(--accent);text-decoration:none}
 </head>
 <body>
 <div class="wrap">
-  <h1>🏭 لوحة المصنع</h1>
-  <p class="story">أنتج المجتمع <strong>3</strong> أداة رقمية انطلاقاً من <strong>1</strong> فكرة مجتمعية. منها <strong>1</strong> مولَّدة بالذكاء الاصطناعي.</p>
-
+  <h1>🏭 Factory Dashboard</h1>
+  <p class="story">The community has shipped <strong>2</strong> digital tools</p>
   <div class="grid">
-    <div class="stat"><div class="n">3</div><div class="l">منتجات منشورة</div></div>
-    <div class="stat"><div class="n">1</div><div class="l">جيل ذكي</div></div>
-    <div class="stat"><div class="n">2</div><div class="l">قوالب حتمية</div></div>
-    <div class="stat"><div class="n">1</div><div class="l">أفكار من المجتمع</div></div>
+    <div class="stat"><div class="n">2</div><div class="l">Published products</div></div>
+    <div class="stat"><div class="n">0</div><div class="l">AI-generated</div></div>
+    <div class="stat"><div class="n">2</div><div class="l">Deterministic templates</div></div>
+    <div class="stat"><div class="n">0</div><div class="l">Community ideas</div></div>
   </div>
-
-  <h2>آخر المنتجات</h2>
+  <h2>Latest products</h2>
   <div class="cards">
-    
-      <a class="card" href="../products/weekly/2026-w38-i1/">
-        <div class="week">2026-w38-i1</div>
-        <h3>بطاقة تهنئة عيد الفطر</h3>
-        <div class="meta"><span class="badge">ذكي</span> <span class="badge">Issue #1</span></div>
-      </a>
       <a class="card" href="../products/weekly/2026-w38/">
         <div class="week">2026-w38</div>
         <h3>حاسبة بسيطة</h3>
-        <div class="meta"><span class="badge">حتمي</span> </div>
+        <div class="meta"><span class="badge">Template</span> </div>
       </a>
       <a class="card" href="../products/weekly/2026-w39/">
         <div class="week">2026-w39</div>
         <h3>صفحة هبوط بسيطة</h3>
-        <div class="meta"><span class="badge">حتمي</span> </div>
-      </a>
-  </div>
-
-  <h2>أنماط التنوع</h2>
-  <div><span class="muted">لا توجد وسوم تنوع بعد</span></div>
-
+        <div class="meta"><span class="badge">Template</span> </div>
+      </a></div>
+  <h2>Diversity patterns</h2>
+  <div><span class="muted">No diversity tags yet</span></div>
   <footer>
-    آخر تحديث للكتالوج: 2026-09-17T16:08:20Z<br>
-    وُلدت هذه الصفحة: 2026-09-17 16:17 UTC<br>
-    <a class="home" href="../">العودة للمستودع</a> ·
-    <a class="home" href="https://github.com/Hanachi04/weekly-micro-product-factory/issues/new/choose">قدّم فكرة</a>
+    Catalog last updated: 2026-09-17T14:19:22Z<br>
+    Page generated: 2026-09-17 16:36 UTC<br>
+    <a class="home" href="../">Back to repository</a> ·
+    <a class="home" href="https://github.com/Hanachi04/weekly-micro-product-factory/issues/new/choose">Submit an idea</a>
   </footer>
 </div>
 </body>

@@ -28,6 +28,7 @@ jobs:
       - name: Generate stats/index.html
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
+          FACTORY_LANG: ${{ vars.FACTORY_LANG || 'ar' }}
         run: |
           python scripts/generate_stats.py
           ls -la stats/

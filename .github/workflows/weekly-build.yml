@@ -39,6 +39,14 @@ on:
         required: false
         type: string
         default: ''
+      lang:
+        description: 'Factory language (ar or en)'
+        required: false
+        type: choice
+        options:
+          - ar
+          - en
+        default: ar
 
 permissions:
   contents: write
@@ -235,6 +243,7 @@ jobs:
     if: ${{ needs.prepare.outputs.use_ai == 'true' }}
     runs-on: ubuntu-latest
     env:
+      FACTORY_LANG: ${{ github.event.inputs.lang || vars.FACTORY_LANG || 'ar' }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
@@ -559,7 +568,7 @@ jobs:
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           ISSUE_NO="${{ needs.prepare.outputs.source_issue_number }}"
           if [ -z "$ISSUE_NO" ]; then ISSUE_NO="${{ inputs.source_issue_number }}"; fi
-          export P_TITLE="$TITLE" P_DESC="$DESC" P_WEEK="$WEEK_ID" P_TEMPLATE="$TEMPLATE" P_METHOD="$BUILD_METHOD" P_TS="$TIMESTAMP" P_TARGET="$TARGET" P_ISSUE="$ISSUE_NO"
+          export P_TITLE="$TITLE" P_DESC="$DESC" P_WEEK="$WEEK_ID" P_TEMPLATE="$TEMPLATE" P_METHOD="$BUILD_METHOD" P_TS="$TIMESTAMP" P_TARGET="$TARGET" P_ISSUE="$ISSUE_NO" P_LANG="${{ github.event.inputs.lang || vars.FACTORY_LANG || 'ar' }}"
           python3 -c "
           import json, os
           data = {
@@ -570,6 +579,7 @@ jobs:
             'build_method': os.environ['P_METHOD'],
             'generated_at': os.environ['P_TS'],
             'source_issue_number': os.environ.get('P_ISSUE') or None,
+            'lang': os.environ.get('P_LANG') or 'ar',
             'quality_score': None,
             'diversity_score': None,
           }
@@ -629,6 +639,7 @@ jobs:
               "source_issue_number": product_meta.get("source_issue_number"),
               "diversity_tags": tags,
               "votes": product_meta.get("votes"),
+              "lang": product_meta.get("lang") or "ar",
           }
           catalog["products"].insert(0, entry)
           catalog["total_count"] = len(catalog["products"])
@@ -677,16 +688,14 @@ jobs:
           PRODUCT_URL="https://github.com/${REPO}/tree/main/products/weekly/${WEEK_ID}"
           STATS_URL="https://github.com/${REPO}/tree/main/stats"
           gh label create produced --color 5319e7 --description "Idea produced by the factory" 2>/dev/null || true
-          cat > /tmp/produced.md << EOF
-          ✅ **تم إنتاج فكرتك!**
-
-          المنتج: [$WEEK_ID]($PRODUCT_URL)
-
-          لوحة الإحصائيات: [stats]($STATS_URL)
-
-          شكراً لمساهمتك في المصنع 🏭✨
-          EOF
-          sed -i 's/^          //' /tmp/produced.md
+          python3 -c "
+          import sys, os
+          sys.path.insert(0, 'agents')
+          from utils.i18n import get_text
+          lang = os.environ.get('FACTORY_LANG') or '${{ github.event.inputs.lang || vars.FACTORY_LANG || 'ar' }}'
+          msg = get_text('produce.comment', lang, week='$WEEK_ID', product_url='$PRODUCT_URL', stats_url='$STATS_URL')
+          open('/tmp/produced.md','w',encoding='utf-8').write(msg)
+          "
           gh issue comment "$ISSUE_NO" --body-file /tmp/produced.md
           gh issue edit "$ISSUE_NO" --add-label "produced" --remove-label "approved" || true
           gh issue close "$ISSUE_NO" --reason "completed" || true
