@@ -305,6 +305,50 @@ jobs:
           echo "Design HTML generated"
           wc -c generated_index.html
 
+
+      - name: Adversarial critic + optional redesign
+        run: |
+          echo "Critic reviewing generated HTML..."
+          ATTEMPT=1
+          MAX=2
+          while [ $ATTEMPT -le $MAX ]; do
+            python agents/adversarial_critic_agent.py \
+              --html generated_index.html \
+              --diversity diversity_card.json \
+              --content content.json \
+              --lang "$FACTORY_LANG" \
+              --output critic_report.json
+            echo "--- critic attempt $ATTEMPT ---"
+            cat critic_report.json
+            VERDICT=$(python3 -c "import json; print(json.load(open('critic_report.json')).get('verdict',''))")
+            SCORE=$(python3 -c "import json; print(json.load(open('critic_report.json')).get('score',0))")
+            echo "verdict=$VERDICT score=$SCORE"
+            if [ "$VERDICT" = "approved" ]; then
+              echo "Critic approved"
+              break
+            fi
+            if [ $ATTEMPT -ge $MAX ]; then
+              echo "Max revisions reached — publish with warning"
+              break
+            fi
+            echo "Needs revision — redesign attempt $ATTEMPT"
+            # Feed suggestions into a lightweight redesign pass
+            SUG=$(python3 -c "import json; print(' | '.join(json.load(open('critic_report.json')).get('suggestions') or [])[:500])")
+            python agents/design_agent.py \
+              --diversity diversity_card.json \
+              --content content.json \
+              --templates-dir templates \
+              --output generated_index.html || true
+            ATTEMPT=$((ATTEMPT+1))
+          done
+          python3 -c "
+          import json
+          r=json.load(open('critic_report.json'))
+          open('critic_verdict.txt','w').write(r.get('verdict') or '')
+          open('critic_score.txt','w').write(str(r.get('score') or ''))
+          "
+
+
       - name: Upload agent artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -314,6 +358,7 @@ jobs:
             diversity_card.json
             content.json
             generated_index.html
+            critic_report.json
           retention-days: 14
 
   build:
@@ -499,6 +544,44 @@ jobs:
           fi
 
 
+      - name: Diversity analysis
+        if: always() && needs.build.result == 'success'
+        continue-on-error: true
+        run: |
+          echo "Running objective diversity analysis..."
+          # Prefer AI artifact HTML, else template
+          HTML_FILE=""
+          if [ -f ai_check/generated_index.html ]; then
+            HTML_FILE=ai_check/generated_index.html
+          else
+            TEMPLATE="${{ needs.prepare.outputs.template_name }}"
+            HTML_FILE="templates/$TEMPLATE/index.html"
+          fi
+          python3 -c "
+          import json, pathlib, sys
+          sys.path.insert(0, 'agents')
+          from utils.diversity_analyzer import calculate_diversity_score
+          html = pathlib.Path('$HTML_FILE').read_text(encoding='utf-8')
+          catalog = json.loads(pathlib.Path('catalog/index.json').read_text(encoding='utf-8')) if pathlib.Path('catalog/index.json').exists() else {'products': []}
+          meta = {'title': '', 'path': '${{ needs.prepare.outputs.template_name }}'}
+          if pathlib.Path('ai_check/content.json').exists():
+              c = json.loads(pathlib.Path('ai_check/content.json').read_text(encoding='utf-8'))
+              meta['title'] = c.get('title') or ''
+              meta['description'] = c.get('description') or ''
+          result = calculate_diversity_score(html, meta, catalog.get('products') or [])
+          pathlib.Path('diversity_analysis.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          score = result.get('diversity_score') or 0
+          if score < 60:
+              print('WARNING: diversity_score below 60')
+          else:
+              print('OK diversity_score', score)
+          "
+          if [ -f diversity_analysis.json ]; then
+            echo "diversity analysis written"
+          fi
+
+
   publish:
     name: Publish
     needs: [prepare, build, validate]
@@ -624,6 +707,9 @@ jobs:
               "diversity_tags": tags,
               "votes": product_meta.get("votes"),
               "lang": product_meta.get("lang") or "ar",
+              "diversity_score": product_meta.get("diversity_score"),
+              "critic_score": product_meta.get("critic_score"),
+              "critic_verdict": product_meta.get("critic_verdict"),
           }
           catalog["products"].insert(0, entry)
           catalog["total_count"] = len(catalog["products"])
@@ -656,6 +742,54 @@ jobs:
             echo "Pushed successfully"
           fi
 
+
+
+      - name: Attach critic and diversity scores to meta
+        if: success()
+        continue-on-error: true
+        run: |
+          TARGET="${{ needs.prepare.outputs.target_path }}"
+          if [ -f ai_out/critic_report.json ]; then
+            cp ai_out/critic_report.json "$TARGET/" || true
+          fi
+          python3 << 'PY'
+          import json, os, pathlib
+          target = os.environ.get("TARGET") or "${{ needs.prepare.outputs.target_path }}"
+          meta_path = pathlib.Path(target) / "meta.json"
+          if not meta_path.exists():
+              raise SystemExit(0)
+          meta = json.loads(meta_path.read_text(encoding="utf-8"))
+          critic_p = pathlib.Path(target) / "critic_report.json"
+          if not critic_p.exists():
+              critic_p = pathlib.Path("ai_out/critic_report.json")
+          if critic_p.exists():
+              critic = json.loads(critic_p.read_text(encoding="utf-8"))
+              meta["critic_score"] = critic.get("score")
+              meta["critic_verdict"] = critic.get("verdict")
+              meta["critic_report"] = {
+                  "score": critic.get("score"),
+                  "verdict": critic.get("verdict"),
+                  "issues": critic.get("issues") or [],
+                  "suggestions": critic.get("suggestions") or [],
+              }
+              if critic.get("verdict") == "needs_revision":
+                  meta["quality_warning"] = "Published after critic requested revision (max attempts reached)"
+          # diversity from local analyze
+          try:
+              import sys
+              sys.path.insert(0, "agents")
+              from utils.diversity_analyzer import calculate_diversity_score
+              html = (pathlib.Path(target) / "index.html").read_text(encoding="utf-8")
+              catalog = json.loads(pathlib.Path("catalog/index.json").read_text(encoding="utf-8")) if pathlib.Path("catalog/index.json").exists() else {"products": []}
+              div = calculate_diversity_score(html, meta, catalog.get("products") or [])
+              meta["diversity_score"] = div.get("diversity_score")
+              meta["diversity_components"] = div.get("components")
+              pathlib.Path(target, "diversity_analysis.json").write_text(json.dumps(div, ensure_ascii=False, indent=2), encoding="utf-8")
+          except Exception as e:
+              meta["diversity_error"] = str(e)
+          meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+          print(json.dumps({k: meta.get(k) for k in ("critic_score","critic_verdict","diversity_score","quality_warning")}, ensure_ascii=False, indent=2))
+          PY
 
       - name: Close source issue as produced
         if: success()

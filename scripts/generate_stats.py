@@ -30,6 +30,12 @@ def build_html(catalog: dict, lang: str) -> str:
     det = total - ai
     issues = [p.get("source_issue_number") for p in products if p.get("source_issue_number")]
     unique_issues = len(set(str(i) for i in issues if i))
+    critic_scores = [float(p["critic_score"]) for p in products if p.get("critic_score") is not None]
+    div_scores = [float(p["diversity_score"]) for p in products if p.get("diversity_score") is not None]
+    avg_critic = round(sum(critic_scores) / len(critic_scores), 1) if critic_scores else None
+    avg_div = round(sum(div_scores) / len(div_scores), 1) if div_scores else None
+    revisions = sum(1 for p in products if p.get("critic_verdict") == "needs_revision" or p.get("quality_warning"))
+
 
     tags: dict[str, int] = {}
     for p in products:
@@ -62,6 +68,21 @@ def build_html(catalog: dict, lang: str) -> str:
             story += t("stats.story_ai", ai=ai)
     else:
         story = t("stats.story_empty")
+
+
+    bars = ""
+    for p in products[:8]:
+        ds = p.get("diversity_score")
+        if ds is None:
+            continue
+        try:
+            w = max(4, min(100, float(ds)))
+        except (TypeError, ValueError):
+            continue
+        week = p.get("week", "")
+        bars += f'<div class="bar-row"><span class="bar-label">{week}</span><span class="bar" style="width:{w}%"></span><span class="bar-val">{ds}</span></div>\n'
+    if not bars:
+        bars = f'<p class="muted">{"لا بيانات تنوع بعد" if lang == "ar" else "No diversity data yet"}</p>'
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     last = catalog.get("last_updated") or now
@@ -112,6 +133,17 @@ a.home{{color:var(--accent);text-decoration:none}}
   <div class="cards">{cards if cards else f'<p class="muted">{t("stats.no_products")}</p>'}</div>
   <h2>{t("stats.diversity")}</h2>
   <div>{tags_html}</div>
+
+  <h2>{"جودة الإنتاج" if lang == "ar" else "Production quality"}</h2>
+  <div class="grid">
+    <div class="stat"><div class="n">{avg_critic if avg_critic is not None else "—"}</div><div class="l">{"متوسط النقد /10" if lang == "ar" else "Avg critic /10"}</div></div>
+    <div class="stat"><div class="n">{avg_div if avg_div is not None else "—"}</div><div class="l">{"متوسط التنوع /100" if lang == "ar" else "Avg diversity /100"}</div></div>
+    <div class="stat"><div class="n">{revisions}</div><div class="l">{"تحذيرات مراجعة" if lang == "ar" else "Revision warnings"}</div></div>
+  </div>
+  <div class="bars">
+    {bars}
+  </div>
+
   <footer>
     {t("stats.updated")}: {last}<br>
     {t("stats.generated")}: {now}<br>
