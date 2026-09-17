@@ -1,6 +1,22 @@
 {
   "products": [
     {
+      "week": "2026-w51",
+      "title": "حاسبة بسيطة",
+      "description": "حاسبة أساسية للعمليات الأربع تعمل بدون إنترنت",
+      "path": "products/weekly/2026-w51",
+      "template": "calculator",
+      "build_method": "deterministic",
+      "generated_at": "2026-09-17T18:09:42Z",
+      "source_issue_number": null,
+      "diversity_tags": [],
+      "votes": null,
+      "lang": "ar",
+      "diversity_score": 73.5,
+      "critic_score": null,
+      "critic_verdict": null
+    },
+    {
       "week": "2026-w50",
       "title": "بطاقة شكر بسيطة",
       "description": "صمم بطاقة شكر فريدة في صفحة واحدة، حيث يكتب المستخدم رسالة قصيرة مع اسم المستلم، ويضيف صورة أو رسمة بسحب وإفلات. التصميم هادئ وأنيق يبرز تقديرك، مع شريط ترويسة ثابت، قسم إدخال، زر إرسال، وتذييل بسيط مع روابط اجتماعية. استمتع بلمسة شخصية تُظهر الامتنان بوضوح وتلهم السعادة.",
@@ -118,6 +134,6 @@
       "generated_at": "2026-09-17T14:17:08Z"
     }
   ],
-  "last_updated": "2026-09-17T16:51:53Z",
-  "total_count": 8
+  "last_updated": "2026-09-17T18:09:42Z",
+  "total_count": 9
 }
