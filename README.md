@@ -96,3 +96,11 @@ catalog/          فهرس تراكمي
 أضف Secrets: `TELEGRAM_BOT_TOKEN` و `TELEGRAM_CHAT_ID`.  
 بعد كل نشر ناجح تُرسل رسالة بالعنوان ودرجة التنوع ونتيجة النقد.  
 ضع أيضاً Variable `TELEGRAM_ENABLED=true` لتظهر الحالة في `/stats/`.
+
+
+## للمطورين / Developers
+
+- الإصدار الحالي: انظر ملف [`VERSION`](./VERSION) (Semantic Versioning)
+- [دليل الوكلاء AGENTS_API](./docs/AGENTS_API.md)
+- [اختبارات](./tests/) — `pip install -r requirements-dev.txt && pytest`
+- صفحة الهبوط: [`index.html`](./index.html)

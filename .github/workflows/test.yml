@@ -1,0 +1,47 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run pytest
+        run: pytest tests/ -q --tb=short
+
+      - name: Check locale key parity
+        run: |
+          python3 -c "
+          import json
+          from pathlib import Path
+          ar = json.loads(Path('locales/ar.json').read_text())
+          en = json.loads(Path('locales/en.json').read_text())
+          assert set(ar) == set(en), (set(ar)-set(en), set(en)-set(ar))
+          print('locale parity OK', len(ar), 'keys')
+          "
+
+      - name: VERSION present
+        run: |
+          test -f VERSION
+          echo "VERSION=$(cat VERSION)"

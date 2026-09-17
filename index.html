@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مصنع المنتجات المصغرة الأسبوعي</title>
+<meta name="description" content="نظام مفتوح المصدر مجاني لإنتاج منتجات رقمية ثابتة أسبوعياً عبر GitHub Actions ووكلاء ذكاء اصطناعي">
+<style>
+:root{--bg:#0b1220;--card:#151e2e;--text:#e8eef7;--muted:#94a3b8;--accent:#38bdf8;--ok:#34d399}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+.wrap{max-width:880px;margin:0 auto;padding:1.5rem 1.25rem 3rem}
+header{margin-bottom:1.75rem}
+.badge{display:inline-block;background:#1e3a5f;color:var(--accent);font-size:.75rem;padding:.2rem .55rem;border-radius:999px;margin-bottom:.75rem}
+h1{font-size:1.65rem;margin-bottom:.4rem}
+.lead{color:var(--muted);font-size:1.05rem;max-width:36rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem;margin:1.5rem 0}
+.card{background:var(--card);border-radius:14px;padding:1rem 1.1rem;border:1px solid #243044}
+.card h2{font-size:1rem;margin-bottom:.35rem}
+.card p{font-size:.9rem;color:var(--muted)}
+.actions{display:flex;flex-wrap:wrap;gap:.6rem;margin:1.5rem 0}
+a.btn{display:inline-block;text-decoration:none;padding:.65rem 1rem;border-radius:10px;font-weight:600;font-size:.95rem}
+a.btn-primary{background:var(--accent);color:#0b1220}
+a.btn-ghost{background:transparent;color:var(--text);border:1px solid #334155}
+ol{margin:1rem 0 1rem 1.25rem;color:var(--muted)}
+ol li{margin:.35rem 0}
+footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #243044;font-size:.85rem;color:var(--muted)}
+footer a{color:var(--accent)}
+.en{direction:ltr;text-align:left;margin-top:2rem;padding-top:1.5rem;border-top:1px dashed #334155}
+.en h1{font-size:1.25rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="badge">v1.0.0 · مفتوح المصدر · مجاني بالكامل</span>
+    <h1>🏭 مصنع المنتجات المصغرة الأسبوعي</h1>
+    <p class="lead">نظام ذاتي التشغيل ينتج صفحات HTML خفيفة أسبوعياً من أفكار المجتمع — بدون خوادم وبدون ميزانية، ويعمل من الهاتف.</p>
+  </header>
+
+  <div class="actions">
+    <a class="btn btn-primary" href="https://github.com/Hanachi04/weekly-micro-product-factory/issues/new/choose">قدّم فكرة</a>
+    <a class="btn btn-ghost" href="stats/">لوحة الإحصائيات</a>
+    <a class="btn btn-ghost" href="https://github.com/Hanachi04/weekly-micro-product-factory">المستودع</a>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>فرز + تصويت</h2>
+      <p>Issues تُراجع آلياً، ثم يصوّت المجتمع بـ 👍 لاختيار فكرة الأسبوع.</p>
+    </div>
+    <div class="card">
+      <h2>وكلاء أذكياء</h2>
+      <p>تنوع، محتوى، تصميم، ونقد عدائي — مع مسار قوالب حتمي كاحتياط.</p>
+    </div>
+    <div class="card">
+      <h2>جودة قابلة للقياس</h2>
+      <p>درجة تنوع موضوعية + تقرير نقد يُحفظ في meta.json لكل منتج.</p>
+    </div>
+    <div class="card">
+      <h2>Telegram اختياري</h2>
+      <p>إشعار عند كل نشر ناجح: الرابط، التنوع، ونتيجة النقد.</p>
+    </div>
+  </div>
+
+  <h2 style="font-size:1.1rem;margin-top:1rem">كيف تشارك؟</h2>
+  <ol>
+    <li>افتح Issue بقالب «فكرة منتج جديد».</li>
+    <li>بعد القبول، صوّت 👍 على تعليق التصويت.</li>
+    <li>يوم الاثنين يختار المصنع الأعلى أصواتاً وينشر المنتج.</li>
+    <li>تابع النتيجة في <a href="stats/" style="color:var(--accent)">/stats</a> أو Telegram.</li>
+  </ol>
+
+  <p style="color:var(--muted);font-size:.9rem">للمطورين: <a href="docs/AGENTS_API.md" style="color:var(--accent)">دليل الوكلاء</a> · <a href="docs/FORK_GUIDE.md" style="color:var(--accent)">دليل الـ Fork</a> · <a href="docs/LIVE_FORK_EXAMPLE.md" style="color:var(--accent)">مثال حي</a></p>
+
+  <div class="en">
+    <h1>Autonomous Weekly Micro-Product Factory</h1>
+    <p class="lead">Zero-budget GitHub Actions factory that ships offline static HTML micro-products from community ideas — bilingual (AR/EN), phone-friendly, with optional AI agents and Telegram alerts.</p>
+    <div class="actions">
+      <a class="btn btn-primary" href="https://github.com/Hanachi04/weekly-micro-product-factory/issues/new/choose">Submit an idea</a>
+      <a class="btn btn-ghost" href="stats/">Stats dashboard</a>
+    </div>
+  </div>
+
+  <footer>
+    الإصدار <strong>1.0.0</strong> ·
+    <a href="https://github.com/Hanachi04/weekly-micro-product-factory">GitHub</a> ·
+    <a href="https://github.com/Hanachi04/arabic-education-factory">مثال تعليمي</a>
+  </footer>
+</div>
+</body>
+</html>
