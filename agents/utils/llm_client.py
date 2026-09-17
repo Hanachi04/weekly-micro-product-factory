@@ -28,15 +28,23 @@ def _try_gemini(prompt: str, system_prompt: str) -> Optional[str]:
         import google.generativeai as genai
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=system_prompt or None,
-        )
-        response = model.generate_content(prompt)
-        text = getattr(response, "text", None)
-        if text and text.strip():
-            logger.info("Gemini: success")
-            return text.strip()
+        last_err = None
+        for model_name in ("gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"):
+            try:
+                model = genai.GenerativeModel(
+                    model_name=model_name,
+                    system_instruction=system_prompt or None,
+                )
+                response = model.generate_content(prompt)
+                text = getattr(response, "text", None)
+                if text and text.strip():
+                    logger.info("Gemini success with %s", model_name)
+                    return text.strip()
+            except Exception as e:
+                last_err = e
+                logger.warning("Gemini model %s failed: %s", model_name, e)
+        if last_err:
+            raise last_err
         logger.warning("Gemini: empty response")
         return None
     except Exception as exc:
@@ -58,16 +66,28 @@ def _try_groq(prompt: str, system_prompt: str) -> Optional[str]:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=messages,
-            temperature=0.4,
-            max_tokens=1024,
-        )
-        text = completion.choices[0].message.content
-        if text and text.strip():
-            logger.info("Groq: success")
-            return text.strip()
+        last_err = None
+        for model_name in (
+            "llama-3.3-70b-versatile",
+            "openai/gpt-oss-20b",
+            "llama-3.1-8b-instant",
+        ):
+            try:
+                completion = client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    temperature=0.4,
+                    max_tokens=1024,
+                )
+                text = completion.choices[0].message.content
+                if text and text.strip():
+                    logger.info("Groq success with %s", model_name)
+                    return text.strip()
+            except Exception as e:
+                last_err = e
+                logger.warning("Groq model %s failed: %s", model_name, e)
+        if last_err:
+            raise last_err
         logger.warning("Groq: empty response")
         return None
     except Exception as exc:
