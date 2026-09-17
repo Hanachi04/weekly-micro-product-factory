@@ -1,0 +1,15 @@
+{
+  "status": "approved",
+  "reason": null,
+  "reason_code": null,
+  "user_message": "تم قبول فكرتك: **مؤقت شاي** ✅\n\nستدخل قائمة التصويت للدورة الأسبوعية. أضف 👍 على تعليق التصويت لدعمها.\n\nشكراً لمساهمتك في مصنع المنتجات المصغرة! 🏭✨",
+  "normalized_title": "مؤقت شاي",
+  "normalized_description": "مؤقت بسيط لتحضير الشاي بثلاث دقايق مع تنبيه بصري",
+  "category": "",
+  "constraints": "",
+  "summary": "مؤقت شاي: مؤقت بسيط لتحضير الشاي بثلاث دقايق مع تنبيه بصري",
+  "security_flags": [],
+  "source": "github_issue",
+  "issue_number": null,
+  "lang": "ar"
+}

@@ -1,0 +1,37 @@
+{
+  "forbidden_colors": [
+    "#FFFFFF",
+    "#000000",
+    "#FF0000",
+    "#00FF00",
+    "#0000FF"
+  ],
+  "required_layout": "صفحة واحدة مع عداد متحرك في منتصف الشاشة، لا أزرار إضافية، تصميم بسيط يركز على المؤقت فقط",
+  "tone_of_voice": "أسلوب تحفيزي ومشجع، يثير الحماس لتجربة تحضير الشاي",
+  "interaction_type": "تفاعل تفاعلي مع مؤقت يضبط عداد ويشعل إشارة عند انتهاء",
+  "forbidden_patterns": [
+    "landing-page",
+    "calculator",
+    "simple",
+    "fast",
+    "phone compatible",
+    "offline",
+    "card"
+  ],
+  "suggested_palette": [
+    "#FF8C00",
+    "#4CAF50",
+    "#2196F3"
+  ],
+  "notes": "تجنب العناصر المتكررة وتقديم تجربة فريدة",
+  "based_on_products": [
+    "2026-w48",
+    "2026-w46",
+    "2026-w45",
+    "2026-w38-i1",
+    "2026-w38",
+    "2026-w39"
+  ],
+  "idea_title": "مؤقت شاي",
+  "source": "llm"
+}
