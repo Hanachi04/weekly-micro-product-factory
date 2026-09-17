@@ -1,4 +1,14 @@
 {
-  "contributors": [],
-  "last_updated": null
+  "contributors": [
+    {
+      "username": "Hanachi04",
+      "ideas_submitted": 1,
+      "ideas_produced": 1,
+      "avg_diversity_score": 66.5,
+      "diversity_sum": 66.5,
+      "diversity_count": 1,
+      "last_contribution": "2026-w50"
+    }
+  ],
+  "last_updated": "2026-09-17T18:07:37Z"
 }
