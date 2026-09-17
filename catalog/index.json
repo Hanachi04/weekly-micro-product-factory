@@ -1,6 +1,22 @@
 {
   "products": [
     {
+      "week": "2026-w53",
+      "title": "صفحة هبوط بسيطة",
+      "description": "صفحة هبوط خفيفة وسريعة متوافقة مع الهاتف",
+      "path": "products/weekly/2026-w53",
+      "template": "landing-page",
+      "build_method": "deterministic",
+      "generated_at": "2026-09-17T18:19:27Z",
+      "source_issue_number": null,
+      "diversity_tags": [],
+      "votes": null,
+      "lang": "ar",
+      "diversity_score": 62.0,
+      "critic_score": null,
+      "critic_verdict": null
+    },
+    {
       "week": "2026-w52",
       "title": "متتبع العادات الأسبوعي",
       "description": "تتبع عادة واحدة على مدار 7 أيام مع حفظ محلي بدون إنترنت",
@@ -150,6 +166,6 @@
       "generated_at": "2026-09-17T14:17:08Z"
     }
   ],
-  "last_updated": "2026-09-17T18:11:51Z",
-  "total_count": 10
+  "last_updated": "2026-09-17T18:19:28Z",
+  "total_count": 11
 }
