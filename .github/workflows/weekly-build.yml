@@ -169,18 +169,27 @@ jobs:
           SEL_OK="${{ needs.select-idea.outputs.selected }}"
           EVENT="${{ github.event_name }}"
 
-          echo "debug AI=$INPUT_AI title=$INPUT_TITLE event=$EVENT sel=$SEL_OK"
+          echo "debug AI=$INPUT_AI title=$INPUT_TITLE event=$EVENT sel=$SEL_OK issue=$SEL_ISSUE"
 
-          if [ "$EVENT" = "schedule" ] && { [ "$SEL_OK" = "true" ] || [ "$SEL_OK" = "True" ]; }; then
+          # Prefer community-voted idea whenever select-idea selected one
+          if [ "$SEL_OK" = "true" ] || [ "$SEL_OK" = "True" ]; then
             echo "Community-voted idea #$SEL_ISSUE"
             echo "idea_title=$SEL_TITLE" >> "$GITHUB_OUTPUT"
-            { echo "idea_description<<EOF"; echo "$SEL_DESC"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+            {
+              echo "idea_description<<EOF"
+              echo "$SEL_DESC"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
             echo "source_issue_number=$SEL_ISSUE" >> "$GITHUB_OUTPUT"
             echo "use_ai=true" >> "$GITHUB_OUTPUT"
           elif [ "$INPUT_AI" = "true" ]; then
-            echo "Dispatch AI path"
+            echo "Dispatch AI path (manual idea)"
             echo "idea_title=$INPUT_TITLE" >> "$GITHUB_OUTPUT"
-            { echo "idea_description<<EOF"; echo "$INPUT_DESC"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+            {
+              echo "idea_description<<EOF"
+              echo "$INPUT_DESC"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
             echo "source_issue_number=$INPUT_ISSUE" >> "$GITHUB_OUTPUT"
             echo "use_ai=true" >> "$GITHUB_OUTPUT"
           else
