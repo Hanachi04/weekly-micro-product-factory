@@ -1,0 +1,26 @@
+{
+  "week": "2026-w56",
+  "title": "قائمة مهامك اليومية",
+  "description": "ابدأ يومك بطاقة إيجابية مع تطبيقنا البسيط الذي يتيح لك إضافة مهامك اليومية وتحديدها كمكتملة، مع إمكانية سحب وإعادة ترتيبها لتناسب أوقاتك. كل ذلك يعمل محليًا دون الحاجة للإنترنت، مما يضمن استمرارية إنتاجيتك أينما كنت. احصل على تحفيز يومي، وحقق أهدافك خطوة بخطوة!",
+  "path": "calculator",
+  "build_method": "ai_generated",
+  "generated_at": "2026-09-17T19:05:05Z",
+  "source_issue_number": "3",
+  "lang": "ar",
+  "quality_score": null,
+  "diversity_score": 67.1,
+  "critic_score": 8.5,
+  "critic_verdict": "approved",
+  "critic_report": {
+    "score": 8.5,
+    "verdict": "approved",
+    "issues": [],
+    "suggestions": []
+  },
+  "diversity_components": {
+    "color": 66.2,
+    "structure": 50.0,
+    "text": 98.8,
+    "type": 50.0
+  }
+}

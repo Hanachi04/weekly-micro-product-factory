@@ -1,0 +1,8 @@
+{
+  "score": 8.5,
+  "issues": [],
+  "suggestions": [],
+  "verdict": "approved",
+  "source": "heuristic",
+  "llm_error": "Expecting ',' delimiter: line 23 column 6 (char 741)"
+}
