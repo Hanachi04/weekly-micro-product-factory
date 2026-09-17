@@ -86,7 +86,7 @@ jobs:
             --comment "أُغلق تلقائياً بعد رفض بوابة الفرز. يمكنك تعديل الفكرة وفتح Issue جديد."
           echo "❌ Issue rejected and closed"
 
-      - name: Approve, label, and trigger build
+      - name: Approve, label, and open voting
         if: steps.triage.outputs.status == 'approved'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -96,33 +96,20 @@ jobs:
             --add-label "approved" \
             --remove-label "needs-triage" || true
 
-          if [ "${{ steps.rate.outputs.over_limit }}" = "true" ]; then
-            gh issue comment ${{ github.event.issue.number }} --body "✅ الفكرة مقبولة، لكن تم بلوغ الحد اليومي (5 أفكار). سيتم إدراجها في أقرب دورة لاحقة يدوياً."
-            echo "Rate limited — skip dispatch"
-            exit 0
-          fi
+          # Voting ballot comment (tracked by marker for select_idea.py)
+          cat > /tmp/vote_ballot.md << 'BALLOT'
+          <!-- factory-vote-ballot -->
+          ## 🗳️ صوّت لهذه الفكرة
 
-          TITLE=$(cat /tmp/norm_title.txt)
-          DESC=$(cat /tmp/norm_desc.txt)
-          ISSUE_NO="${{ github.event.issue.number }}"
+          أضف تفاعلاً **👍** على **هذا التعليق** لدعم إنتاجها في الدورة الأسبوعية القادمة.
 
-          # Compute next week id (ISO week)
-          WEEK_ID=$(date -u +%Y-w%V)
-          # Avoid collision: append issue number suffix for uniqueness in same week
-          WEEK_ID="${WEEK_ID}-i${ISSUE_NO}"
+          - صوت واحد لكل حساب GitHub
+          - الفكرة الأعلى تصويتاً تُنتج أولاً (عند التعادل: الأقدم)
+          - يمكنك متابعة النتائج من لوحة الإحصائيات `/stats/`
 
-          echo "🚀 Dispatching weekly-build for issue #$ISSUE_NO"
-          echo "  title=$TITLE"
-          echo "  week_id=$WEEK_ID"
-
-          gh workflow run weekly-build.yml \
-            --ref main \
-            -f enable_ai=true \
-            -f idea_title="$TITLE" \
-            -f idea_description="$DESC" \
-            -f week_id="$WEEK_ID" \
-            -f template_name=weekly-tracker \
-            -f source_issue_number="$ISSUE_NO"
-
-          gh issue comment ${{ github.event.issue.number }} --body "🏭 بدأت دورة الإنتاج الذكية (week: \`$WEEK_ID\`). راقب التقدم في تبويب Actions."
-          echo "✅ Build dispatched"
+          شكراً لمساهمتك في توجيه المصنع! 🏭✨
+          BALLOT
+          # un-indent for nice markdown
+          sed -i 's/^          //' /tmp/vote_ballot.md
+          gh issue comment ${{ github.event.issue.number }} --body-file /tmp/vote_ballot.md
+          echo "✅ Idea approved and voting opened (no immediate build — waits for weekly selection)"

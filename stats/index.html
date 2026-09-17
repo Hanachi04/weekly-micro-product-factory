@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة إحصائيات المصنع</title>
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8;--ok:#34d399;--warm:#f59e0b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;padding:1.25rem}
+.wrap{max-width:920px;margin:0 auto}
+h1{font-size:1.5rem;margin-bottom:.35rem}
+.story{color:var(--muted);margin-bottom:1.5rem;font-size:1.05rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin-bottom:1.5rem}
+.stat{background:var(--card);border-radius:12px;padding:1rem;text-align:center}
+.stat .n{font-size:1.75rem;font-weight:700;color:var(--accent)}
+.stat .l{font-size:.8rem;color:var(--muted);margin-top:.25rem}
+h2{font-size:1.1rem;margin:1.25rem 0 .75rem}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem}
+.card{display:block;background:var(--card);border-radius:12px;padding:1rem;text-decoration:none;color:inherit;border:1px solid transparent;transition:border-color .15s}
+.card:hover{border-color:var(--accent)}
+.card .week{font-size:.75rem;color:var(--muted)}
+.card h3{font-size:1rem;margin:.35rem 0}
+.badge{display:inline-block;background:#334155;color:var(--text);font-size:.7rem;padding:.15rem .45rem;border-radius:999px;margin-left:.25rem}
+.tag{display:inline-block;background:#1e3a5f;color:var(--accent);font-size:.75rem;padding:.2rem .55rem;border-radius:999px;margin:.2rem}
+.muted{color:var(--muted);font-size:.9rem}
+footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #334155;color:var(--muted);font-size:.8rem}
+a.home{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏭 لوحة المصنع</h1>
+  <p class="story">أنتج المجتمع <strong>2</strong> أداة رقمية</p>
+
+  <div class="grid">
+    <div class="stat"><div class="n">2</div><div class="l">منتجات منشورة</div></div>
+    <div class="stat"><div class="n">0</div><div class="l">جيل ذكي</div></div>
+    <div class="stat"><div class="n">2</div><div class="l">قوالب حتمية</div></div>
+    <div class="stat"><div class="n">0</div><div class="l">أفكار من المجتمع</div></div>
+  </div>
+
+  <h2>آخر المنتجات</h2>
+  <div class="cards">
+    
+      <a class="card" href="../products/weekly/2026-w38/">
+        <div class="week">2026-w38</div>
+        <h3>حاسبة بسيطة</h3>
+        <div class="meta"><span class="badge">حتمي</span> </div>
+      </a>
+      <a class="card" href="../products/weekly/2026-w39/">
+        <div class="week">2026-w39</div>
+        <h3>صفحة هبوط بسيطة</h3>
+        <div class="meta"><span class="badge">حتمي</span> </div>
+      </a>
+  </div>
+
+  <h2>أنماط التنوع</h2>
+  <div><span class="muted">لا توجد وسوم تنوع بعد</span></div>
+
+  <footer>
+    آخر تحديث للكتالوج: 2026-09-17T14:19:22Z<br>
+    وُلدت هذه الصفحة: 2026-09-17 16:13 UTC<br>
+    <a class="home" href="../">العودة للمستودع</a> ·
+    <a class="home" href="https://github.com/Hanachi04/weekly-micro-product-factory/issues/new/choose">قدّم فكرة</a>
+  </footer>
+</div>
+</body>
+</html>
