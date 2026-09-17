@@ -1,5 +1,15 @@
 {
-  "products": [],
-  "last_updated": null,
-  "total_count": 0
+  "products": [
+    {
+      "week": "2026-w39",
+      "title": "صفحة هبوط بسيطة",
+      "description": "صفحة هبوط خفيفة وسريعة متوافقة مع الهاتف",
+      "path": "products/weekly/2026-w39",
+      "template": "landing-page",
+      "build_method": "deterministic",
+      "generated_at": "2026-09-17T14:17:08Z"
+    }
+  ],
+  "last_updated": "2026-09-17T14:17:08Z",
+  "total_count": 1
 }
