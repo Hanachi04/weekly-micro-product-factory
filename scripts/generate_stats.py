@@ -10,7 +10,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "agents"))
+from urllib.parse import quote  # noqa: E402
+
 from utils.i18n import get_text, resolve_lang  # noqa: E402
+from html_safety import add_csp, esc  # noqa: E402
 
 CATALOG = ROOT / "catalog" / "index.json"
 CONTRIB = ROOT / "catalog" / "contributors.json"
@@ -46,20 +49,22 @@ def build_html(catalog: dict, lang: str) -> str:
 
     cards = ""
     for p in products[:5]:
-        week = p.get("week", "")
-        title = p.get("title", "—")
+        raw_week = p.get("week", "")
+        week = esc(raw_week)
+        title = esc(p.get("title", "—"))
         method = t("stats.method_ai") if p.get("build_method") == "ai_generated" else t("stats.method_det")
-        path = p.get("path") or f"products/weekly/{week}"
+        raw_path = str(p.get("path") or f"products/weekly/{raw_week}")
+        href = esc(quote(raw_path.strip("/"), safe="/-_.~"))
         src = p.get("source_issue_number")
-        src_html = f'<span class="badge">Issue #{src}</span>' if src else ""
+        src_html = f'<span class="badge">Issue #{esc(src)}</span>' if src else ""
         cards += f'''
-      <a class="card" href="../{path}/">
+      <a class="card" href="../{href}/">
         <div class="week">{week}</div>
         <h3>{title}</h3>
         <div class="meta"><span class="badge">{method}</span> {src_html}</div>
       </a>'''
 
-    tags_html = "".join(f'<span class="tag">{x} ({c})</span>' for x, c in top_tags) or f'<span class="muted">{t("stats.no_tags")}</span>'
+    tags_html = "".join(f'<span class="tag">{esc(x)} ({esc(c)})</span>' for x, c in top_tags) or f'<span class="muted">{t("stats.no_tags")}</span>'
 
     if total:
         story = t("stats.story_products", total=total)
@@ -77,7 +82,7 @@ def build_html(catalog: dict, lang: str) -> str:
         cs = p.get("critic_score")
         if ds is None and cs is None:
             continue
-        week = p.get("week", "")
+        week = esc(p.get("week", ""))
         try:
             w = max(4, min(100, float(ds))) if ds is not None else 4
         except (TypeError, ValueError):
@@ -86,8 +91,8 @@ def build_html(catalog: dict, lang: str) -> str:
             cw = max(4, min(100, float(cs) * 10)) if cs is not None else 0
         except (TypeError, ValueError):
             cw = 0
-        ds_s = ds if ds is not None else "—"
-        cs_s = cs if cs is not None else "—"
+        ds_s = esc(ds) if ds is not None else "—"
+        cs_s = esc(cs) if cs is not None else "—"
         bars += (
             f'<div class="bar-row"><span class="bar-label">{week}</span>'
             f'<span class="bar" style="width:{w}%" title="diversity"></span>'
@@ -106,11 +111,11 @@ def build_html(catalog: dict, lang: str) -> str:
             contrib_rows = []
     contrib_html = ""
     for c in contrib_rows:
-        u = c.get("username") or "?"
-        produced = c.get("ideas_produced") or 0
-        submitted = c.get("ideas_submitted") or 0
+        u = esc(c.get("username") or "?")
+        produced = esc(c.get("ideas_produced") or 0)
+        submitted = esc(c.get("ideas_submitted") or 0)
         avg = c.get("avg_diversity_score")
-        avg_s = f"{avg}" if avg is not None else "—"
+        avg_s = esc(avg) if avg is not None else "—"
         contrib_html += (
             f'<div class="contrib"><strong>@{u}</strong> · '
             f'{produced} {t("stats.produced")} · {submitted} {t("stats.ideas")} · '
@@ -124,11 +129,11 @@ def build_html(catalog: dict, lang: str) -> str:
     telegram_badge = "✅" if telegram_on else "❌"
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    last = catalog.get("last_updated") or now
-    repo = os.environ.get("GITHUB_REPOSITORY", "Hanachi04/weekly-micro-product-factory")
+    last = esc(catalog.get("last_updated") or now)
+    repo = esc(quote(os.environ.get("GITHUB_REPOSITORY", "Hanachi04/weekly-micro-product-factory"), safe="/-_."))
     direction = "rtl" if lang == "ar" else "ltr"
 
-    return f'''<!DOCTYPE html>
+    return add_csp(f'''<!DOCTYPE html>
 <html lang="{lang}" dir="{direction}">
 <head>
 <meta charset="UTF-8">
@@ -198,7 +203,7 @@ a.home{{color:var(--accent);text-decoration:none}}
 </div>
 </body>
 </html>
-'''
+''')
 
 
 def main() -> int:

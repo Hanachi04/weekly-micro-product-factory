@@ -22,7 +22,19 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from utils.llm_client import generate_text, AllProvidersFailedError, available_providers
+from utils.llm_client import (  # noqa: E402
+    generate_text_with_meta,
+    html_max_tokens,
+    AllProvidersFailedError,
+    available_providers,
+)
+from html_safety import (  # noqa: E402
+    add_csp,
+    esc,
+    find_unsafe_html,
+    safe_css_color,
+    validate_generated_html,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger("design_agent")
@@ -92,14 +104,19 @@ def _pick_base_template(templates_dir: str, card: dict[str, Any]) -> Path:
 def _inject_fallback(base_html: str, content: dict[str, Any], card: dict[str, Any]) -> str:
     """Deterministic CSS variable + text injection when LLM unavailable."""
     palette = card.get("suggested_palette") or ["#1a365d", "#ed8936", "#f7fafc"]
-    primary = palette[0] if len(palette) > 0 else "#1a365d"
-    secondary = palette[1] if len(palette) > 1 else "#ed8936"
-    bg = palette[2] if len(palette) > 2 else "#f7fafc"
+    if not isinstance(palette, list):
+        palette = []
+    # Palette is LLM-sourced and lands inside <style> and an HTML comment:
+    # allow plain CSS colors only.
+    primary = safe_css_color(palette[0] if len(palette) > 0 else None, "#1a365d")
+    secondary = safe_css_color(palette[1] if len(palette) > 1 else None, "#ed8936")
+    bg = safe_css_color(palette[2] if len(palette) > 2 else None, "#f7fafc")
 
-    title = content.get("title") or "منتج مصغّر"
-    desc = content.get("description") or ""
-    cta = content.get("cta_primary") or "ابدأ"
-    footer = content.get("footer") or ""
+    # LLM/user-sourced text: always HTML-escaped before insertion.
+    title = esc(content.get("title") or "منتج مصغّر")
+    desc = esc(content.get("description") or "")
+    cta = esc(content.get("cta_primary") or "ابدأ")
+    footer = esc(content.get("footer") or "")
 
     # Inject CSS variables after <style> or in head
     css_vars = f"""
@@ -117,12 +134,17 @@ button, .cta, a.cta {{ background: var(--ai-primary) !important; border-color: v
     else:
         html = base_html.replace("</head>", f"<style>{css_vars}</style></head>", 1)
 
+    # Replacements use lambdas so backslashes in values are never treated
+    # as regex group references / escapes.
     # Replace first <h1>...</h1>
-    html = re.sub(r"<h1[^>]*>.*?</h1>", f"<h1>{title}</h1>", html, count=1, flags=re.DOTALL | re.IGNORECASE)
+    html = re.sub(
+        r"<h1[^>]*>.*?</h1>", lambda _m: f"<h1>{title}</h1>", html,
+        count=1, flags=re.DOTALL | re.IGNORECASE,
+    )
     # Replace first descriptive <p class="sub|desc|...">
     html = re.sub(
         r'<p class="(?:sub|desc|description)"[^>]*>.*?</p>',
-        f'<p class="desc">{desc}</p>',
+        lambda _m: f'<p class="desc">{desc}</p>',
         html,
         count=1,
         flags=re.DOTALL | re.IGNORECASE,
@@ -130,13 +152,16 @@ button, .cta, a.cta {{ background: var(--ai-primary) !important; border-color: v
     # CTA text in anchors/buttons with class cta
     html = re.sub(
         r'(<(?:a|button)[^>]*class="[^"]*cta[^"]*"[^>]*>)(.*?)(</(?:a|button)>)',
-        rf"\1{cta}\3",
+        lambda m: m.group(1) + cta + m.group(3),
         html,
         count=1,
         flags=re.DOTALL | re.IGNORECASE,
     )
     if footer and "<footer>" in html:
-        html = re.sub(r"<footer>.*?</footer>", f"<footer>{footer}</footer>", html, count=1, flags=re.DOTALL)
+        html = re.sub(
+            r"<footer>.*?</footer>", lambda _m: f"<footer>{footer}</footer>", html,
+            count=1, flags=re.DOTALL,
+        )
 
     # Mark as AI-assisted fallback
     meta = f'<!-- design_agent: fallback | palette={primary},{secondary},{bg} -->\n'
@@ -147,7 +172,8 @@ button, .cta, a.cta {{ background: var(--ai-primary) !important; border-color: v
     return html
 
 
-def _llm_redesign(base_html: str, content: dict[str, Any], card: dict[str, Any]) -> str:
+def _llm_redesign(base_html: str, content: dict[str, Any], card: dict[str, Any]) -> tuple[str, str | None]:
+    """Return (html, finish_reason). Caller must validate and gate the HTML."""
     palette = card.get("suggested_palette") or []
     layout = card.get("required_layout") or "عمود واحد مركزي"
     forbidden = card.get("forbidden_patterns") or []
@@ -183,9 +209,12 @@ def _llm_redesign(base_html: str, content: dict[str, Any], card: dict[str, Any])
 أعد ملف HTML كاملاً فقط بدءاً من <!DOCTYPE html>
 """
 
-    raw = generate_text(prompt, system_prompt=SYSTEM_PROMPT)
+    result = generate_text_with_meta(
+        prompt, system_prompt=SYSTEM_PROMPT, max_tokens=html_max_tokens()
+    )
+    finish_reason = result.finish_reason
     # Extract HTML
-    raw = raw.strip()
+    raw = result.text.strip()
     if "```" in raw:
         m = re.search(r"```(?:html)?\s*([\s\S]*?)```", raw)
         if m:
@@ -197,7 +226,7 @@ def _llm_redesign(base_html: str, content: dict[str, Any], card: dict[str, Any])
         raw = raw[start:]
     if not re.search(r"<html", raw, re.I):
         raise ValueError("LLM output is not valid HTML")
-    return raw
+    return raw, finish_reason
 
 
 def design_product(
@@ -216,8 +245,19 @@ def design_product(
     source = "fallback"
     try:
         if use_llm and available_providers():
-            html = _llm_redesign(base_html, content, card)
-            source = "llm"
+            html, finish_reason = _llm_redesign(base_html, content, card)
+            ok, reason = validate_generated_html(html, finish_reason)
+            unsafe = find_unsafe_html(html) if ok else []
+            if not ok:
+                logger.warning("Design LLM output invalid (%s) — fallback injection", reason)
+                html = _inject_fallback(base_html, content, card)
+                source = "fallback_invalid"
+            elif unsafe:
+                logger.warning("Design LLM output unsafe (%s) — fallback injection", ", ".join(unsafe))
+                html = _inject_fallback(base_html, content, card)
+                source = "fallback_unsafe"
+            else:
+                source = "llm"
         else:
             html = _inject_fallback(base_html, content, card)
     except (AllProvidersFailedError, ValueError, Exception) as exc:
@@ -234,6 +274,9 @@ def design_product(
     # Ensure RTL
     if 'dir="rtl"' not in html and "dir='rtl'" not in html:
         html = html.replace("<html", '<html lang="ar" dir="rtl"', 1)
+
+    # GitHub Pages sends no security headers: CSP via <meta>, first in <head>.
+    html = add_csp(html)
 
     Path(output_path).write_text(html, encoding="utf-8")
     size = len(html.encode("utf-8"))
