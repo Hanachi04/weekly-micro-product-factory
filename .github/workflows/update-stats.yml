@@ -7,13 +7,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   stats:
     name: Generate stats page
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,6 +39,8 @@ jobs:
           wc -c stats/index.html dashboard/data.json
 
       - name: Commit and push
+        env:
+          BRANCH: main
         run: |
           git config user.name "Micro Product Factory"
           git config user.email "factory@users.noreply.github.com"
@@ -46,5 +50,14 @@ jobs:
             exit 0
           fi
           git commit -m "docs(stats): refresh community dashboard and control hub data"
-          git pull --rebase origin main || true
-          git push origin main
+          pushed=0
+          for attempt in 1 2 3; do
+            git pull --rebase --autostash origin "$BRANCH" || { git rebase --abort; echo '::error::rebase conflict'; exit 1; }
+            git push origin "HEAD:$BRANCH" && { pushed=1; break; }
+            echo "Push attempt $attempt failed; retrying in 5s"
+            sleep 5
+          done
+          if [ "$pushed" != "1" ]; then
+            echo "::error::push failed after 3 attempts"
+            exit 1
+          fi

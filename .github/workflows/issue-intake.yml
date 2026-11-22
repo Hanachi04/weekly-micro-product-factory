@@ -6,13 +6,15 @@ on:
 
 permissions:
   contents: read
-  issues: write
-  actions: write
 
 jobs:
   triage-issue:
     name: Triage new idea
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      actions: read
     env:
       FACTORY_LANG: ${{ vars.FACTORY_LANG || 'ar' }}
     # Only process issues that look like product ideas (label or title prefix)
@@ -23,6 +25,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -33,10 +37,11 @@ jobs:
         id: rate
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           TODAY=$(date -u +%Y-%m-%d)
           # Count workflow runs of this workflow started today
-          COUNT=$(gh api "repos/${{ github.repository }}/actions/workflows/issue-intake.yml/runs?per_page=30" \
+          COUNT=$(gh api "repos/$REPO/actions/workflows/issue-intake.yml/runs?per_page=30" \
             --jq "[.workflow_runs[] | select(.created_at | startswith(\"$TODAY\"))] | length" 2>/dev/null || echo 0)
           echo "Intake runs today: $COUNT"
           if [ "$COUNT" -gt 5 ]; then
@@ -80,12 +85,13 @@ jobs:
         if: steps.triage.outputs.status == 'rejected'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body-file /tmp/user_message.md
-          gh issue edit ${{ github.event.issue.number }} \
+          gh issue comment "$ISSUE_NUMBER" --body-file /tmp/user_message.md
+          gh issue edit "$ISSUE_NUMBER" \
             --add-label "rejected" \
             --remove-label "needs-triage" || true
-          gh issue close ${{ github.event.issue.number }} --reason "not planned" \
+          gh issue close "$ISSUE_NUMBER" --reason "not planned" \
             --comment "$(python3 -c "import sys; sys.path.insert(0,'agents'); from utils.i18n import get_text; import os; print(get_text('vote.close_reject', os.environ.get('FACTORY_LANG')))")"
           echo "❌ Issue rejected and closed"
 
@@ -93,9 +99,10 @@ jobs:
         if: steps.triage.outputs.status == 'approved'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body-file /tmp/user_message.md
-          gh issue edit ${{ github.event.issue.number }} \
+          gh issue comment "$ISSUE_NUMBER" --body-file /tmp/user_message.md
+          gh issue edit "$ISSUE_NUMBER" \
             --add-label "approved" \
             --remove-label "needs-triage" || true
 
@@ -107,5 +114,5 @@ jobs:
           import os
           open('/tmp/vote_ballot.md','w',encoding='utf-8').write(get_text('vote.ballot', os.environ.get('FACTORY_LANG')))
           "
-          gh issue comment ${{ github.event.issue.number }} --body-file /tmp/vote_ballot.md
+          gh issue comment "$ISSUE_NUMBER" --body-file /tmp/vote_ballot.md
           echo "✅ Idea approved and voting opened (no immediate build — waits for weekly selection)"

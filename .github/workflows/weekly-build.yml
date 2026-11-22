@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       week_id:
-        description: 'Week ID (YYYY-wNN). Leave empty for current week'
+        description: 'ISO week ID (YYYY-WNN, e.g. 2026-W48). Leave empty for current ISO week (UTC)'
         required: false
         type: string
         default: ''
@@ -39,6 +39,11 @@ on:
         required: false
         type: string
         default: ''
+      overwrite:
+        description: 'Allow overwriting an existing products/weekly/<week_id>/ directory'
+        required: false
+        type: boolean
+        default: false
       lang:
         description: 'Factory language (ar or en)'
         required: false
@@ -49,9 +54,7 @@ on:
         default: ar
 
 permissions:
-  contents: write
-  issues: write
-  actions: read
+  contents: read
 
 jobs:
   select-idea:
@@ -59,6 +62,9 @@ jobs:
     runs-on: ubuntu-latest
     # On schedule always try; on dispatch only if no explicit idea and enable_ai
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.enable_ai == true && inputs.idea_title == 'منتج تجريبي')
+    permissions:
+      contents: read
+      issues: read
     outputs:
       selected: ${{ steps.pick.outputs.selected }}
       issue_number: ${{ steps.pick.outputs.issue_number }}
@@ -68,6 +74,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -109,6 +117,8 @@ jobs:
     needs: [select-idea]
     if: always() && (needs.select-idea.result == 'success' || needs.select-idea.result == 'skipped')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       week_id: ${{ steps.set_week.outputs.week_id }}
       target_path: ${{ steps.set_week.outputs.target_path }}
@@ -120,23 +130,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set week_id
         id: set_week
+        env:
+          INPUT_WEEK_ID: ${{ github.event.inputs.week_id }}
         run: |
-          if [ -n "${{ github.event.inputs.week_id }}" ]; then
-            WEEK_ID="${{ github.event.inputs.week_id }}"
+          if [ -n "$INPUT_WEEK_ID" ]; then
+            WEEK_ID="$INPUT_WEEK_ID"
             echo "Using input week_id: $WEEK_ID"
           else
-            YEAR=$(date -u +%Y)
-            WEEK=$(date -u +%V)
-            WEEK=$((10#$WEEK))
-            WEEK_ID="${YEAR}-w${WEEK}"
+            # ISO-8601 week-numbering year (%G) + ISO week (%V), always UTC
+            WEEK_ID="$(date -u +%G-W%V)"
             echo "Computed week_id: $WEEK_ID"
           fi
 
-          if ! echo "$WEEK_ID" | grep -qE '^[0-9]{4}-w[0-9]{1,2}(-i[0-9]+)?$'; then
-            echo "Invalid week_id format: $WEEK_ID (expected YYYY-wNN or YYYY-wNN-iN)"
+          if ! printf '%s' "$WEEK_ID" | grep -qE '^[0-9]{4}-W[0-9]{2}$'; then
+            echo "::error::Invalid week_id format: '$WEEK_ID' (expected YYYY-WNN, e.g. 2026-W48)"
             exit 1
           fi
 
@@ -147,48 +159,57 @@ jobs:
           echo "target_path=$TARGET_PATH"
 
       - name: Check product does not exist
+        env:
+          TARGET: ${{ steps.set_week.outputs.target_path }}
+          OVERWRITE: ${{ github.event.inputs.overwrite }}
         run: |
-          TARGET="${{ steps.set_week.outputs.target_path }}"
-          if [ -d "$TARGET" ] && [ "$(ls -A "$TARGET" 2>/dev/null)" ]; then
-            echo "ERROR: $TARGET already exists. Refusing to overwrite."
-            exit 1
+          if [ -e "$TARGET" ]; then
+            if [ "$OVERWRITE" = "true" ]; then
+              echo "::warning::$TARGET already exists; overwrite=true so it will be overwritten."
+            else
+              echo "::error::$TARGET already exists. Refusing to overwrite (re-run via workflow_dispatch with overwrite=true to replace it)."
+              exit 1
+            fi
+          else
+            echo "OK: target path is free"
           fi
-          echo "OK: target path is free"
 
 
       - name: Resolve idea source
         id: resolve_idea
+        env:
+          INPUT_TITLE: ${{ github.event.inputs.idea_title }}
+          INPUT_DESC: ${{ github.event.inputs.idea_description }}
+          INPUT_ISSUE: ${{ github.event.inputs.source_issue_number }}
+          INPUT_AI: ${{ github.event.inputs.enable_ai }}
+          SEL_TITLE: ${{ needs.select-idea.outputs.idea_title }}
+          SEL_DESC: ${{ needs.select-idea.outputs.idea_description }}
+          SEL_ISSUE: ${{ needs.select-idea.outputs.issue_number }}
+          SEL_OK: ${{ needs.select-idea.outputs.selected }}
+          EVENT: ${{ github.event_name }}
         run: |
-          INPUT_TITLE="${{ github.event.inputs.idea_title }}"
-          INPUT_DESC="${{ github.event.inputs.idea_description }}"
-          INPUT_ISSUE="${{ github.event.inputs.source_issue_number }}"
-          INPUT_AI="${{ github.event.inputs.enable_ai }}"
-          SEL_TITLE="${{ needs.select-idea.outputs.idea_title }}"
-          SEL_DESC="${{ needs.select-idea.outputs.idea_description }}"
-          SEL_ISSUE="${{ needs.select-idea.outputs.issue_number }}"
-          SEL_OK="${{ needs.select-idea.outputs.selected }}"
-          EVENT="${{ github.event_name }}"
-
           echo "debug AI=$INPUT_AI title=$INPUT_TITLE event=$EVENT sel=$SEL_OK issue=$SEL_ISSUE"
+          # Random heredoc delimiter so idea text can never terminate the block early
+          DELIM="EOF_$(openssl rand -hex 16)"
 
           # Prefer community-voted idea whenever select-idea selected one
           if [ "$SEL_OK" = "true" ] || [ "$SEL_OK" = "True" ]; then
             echo "Community-voted idea #$SEL_ISSUE"
-            echo "idea_title=$SEL_TITLE" >> "$GITHUB_OUTPUT"
+            printf 'idea_title=%s\n' "$(printf '%s' "$SEL_TITLE" | tr '\r\n' '  ')" >> "$GITHUB_OUTPUT"
             {
-              echo "idea_description<<EOF"
-              echo "$SEL_DESC"
-              echo "EOF"
+              echo "idea_description<<$DELIM"
+              printf '%s\n' "$SEL_DESC"
+              echo "$DELIM"
             } >> "$GITHUB_OUTPUT"
             echo "source_issue_number=$SEL_ISSUE" >> "$GITHUB_OUTPUT"
             echo "use_ai=true" >> "$GITHUB_OUTPUT"
           elif [ "$INPUT_AI" = "true" ]; then
             echo "Dispatch AI path (manual idea)"
-            echo "idea_title=$INPUT_TITLE" >> "$GITHUB_OUTPUT"
+            printf 'idea_title=%s\n' "$(printf '%s' "$INPUT_TITLE" | tr '\r\n' '  ')" >> "$GITHUB_OUTPUT"
             {
-              echo "idea_description<<EOF"
-              echo "$INPUT_DESC"
-              echo "EOF"
+              echo "idea_description<<$DELIM"
+              printf '%s\n' "$INPUT_DESC"
+              echo "$DELIM"
             } >> "$GITHUB_OUTPUT"
             echo "source_issue_number=$INPUT_ISSUE" >> "$GITHUB_OUTPUT"
             echo "use_ai=true" >> "$GITHUB_OUTPUT"
@@ -202,8 +223,9 @@ jobs:
 
       - name: Choose template
         id: choose_template
+        env:
+          INPUT_TEMPLATE: ${{ github.event.inputs.template_name }}
         run: |
-          INPUT_TEMPLATE="${{ github.event.inputs.template_name }}"
           if [ -n "$INPUT_TEMPLATE" ]; then
             TEMPLATE="$INPUT_TEMPLATE"
             echo "Template from input: $TEMPLATE"
@@ -231,6 +253,8 @@ jobs:
     needs: prepare
     if: ${{ always() && needs.prepare.result == 'success' && (needs.prepare.outputs.use_ai == 'true' || inputs.enable_ai == true) }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       FACTORY_LANG: ${{ github.event.inputs.lang || vars.FACTORY_LANG || 'ar' }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -239,6 +263,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -252,14 +278,21 @@ jobs:
 
       - name: Run Triage Agent
         id: triage
+        env:
+          TITLE: ${{ needs.prepare.outputs.idea_title }}
+          DESC: ${{ needs.prepare.outputs.idea_description }}
+          ISSUE: ${{ needs.prepare.outputs.source_issue_number }}
         run: |
           echo "🔍 Running Triage Agent..."
-          TITLE="${{ needs.prepare.outputs.idea_title }}"
-          DESC="${{ needs.prepare.outputs.idea_description }}"
-          ISSUE="${{ needs.prepare.outputs.source_issue_number }}"
-          EXTRA=""
-          if [ -n "$ISSUE" ]; then EXTRA="--issue-number $ISSUE"; fi
-          python agents/triage_agent.py             --title "$TITLE"             --description "$DESC"             --source github_issue             --lang "$FACTORY_LANG"             $EXTRA             --output triage_result.json
+          EXTRA=()
+          if [ -n "$ISSUE" ]; then EXTRA=(--issue-number "$ISSUE"); fi
+          python agents/triage_agent.py \
+            --title "$TITLE" \
+            --description "$DESC" \
+            --source github_issue \
+            --lang "$FACTORY_LANG" \
+            "${EXTRA[@]}" \
+            --output triage_result.json
           echo "──────── triage_result.json ────────"
           cat triage_result.json
           STATUS=$(python3 -c "import json; print(json.load(open('triage_result.json'))['status'])")
@@ -371,9 +404,14 @@ jobs:
     needs: [prepare, smart-agents]
     if: always() && needs.prepare.result == 'success' && (needs.smart-agents.result == 'success' || needs.smart-agents.result == 'skipped')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Download AI artifacts
         if: ${{ github.event_name == 'workflow_dispatch' && needs.prepare.outputs.use_ai == 'true' && needs.smart-agents.result == 'success' }}
@@ -385,11 +423,13 @@ jobs:
 
       - name: Assemble product
         id: copy
+        env:
+          WEEK_ID: ${{ needs.prepare.outputs.week_id }}
+          TARGET: ${{ needs.prepare.outputs.target_path }}
+          TEMPLATE: ${{ needs.prepare.outputs.template_name }}
+          ENABLE_AI: ${{ needs.prepare.outputs.use_ai }}
+          INPUT_SOURCE_ISSUE: ${{ inputs.source_issue_number }}
         run: |
-          WEEK_ID="${{ needs.prepare.outputs.week_id }}"
-          TARGET="${{ needs.prepare.outputs.target_path }}"
-          TEMPLATE="${{ needs.prepare.outputs.template_name }}"
-          ENABLE_AI="${{ needs.prepare.outputs.use_ai }}"
 
           echo "Building product for week: $WEEK_ID"
           mkdir -p "$TARGET"
@@ -413,8 +453,8 @@ jobs:
             echo "Using deterministic template: $TEMPLATE"
             cp "templates/$TEMPLATE/index.html" "$TARGET/index.html"
             if [ -f "templates/$TEMPLATE/meta.json" ]; then
-              TITLE=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('name', '$TEMPLATE'))")
-              DESC=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('description', ''))")
+              TITLE=$(python3 -c "import json, os; t=os.environ['TEMPLATE']; print(json.load(open(f'templates/{t}/meta.json')).get('name', t))")
+              DESC=$(python3 -c "import json, os; t=os.environ['TEMPLATE']; print(json.load(open(f'templates/{t}/meta.json')).get('description', ''))")
             else
               TITLE="$TEMPLATE"
               DESC="Deterministic product from template $TEMPLATE"
@@ -426,7 +466,7 @@ jobs:
 
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          export B_TITLE="$TITLE" B_DESC="$DESC" B_WEEK="$WEEK_ID" B_TEMPLATE="$TEMPLATE" B_METHOD="$BUILD_METHOD" B_TS="$TIMESTAMP" B_TARGET="$TARGET" B_ISSUE="${{ inputs.source_issue_number }}"
+          export B_TITLE="$TITLE" B_DESC="$DESC" B_WEEK="$WEEK_ID" B_TEMPLATE="$TEMPLATE" B_METHOD="$BUILD_METHOD" B_TS="$TIMESTAMP" B_TARGET="$TARGET" B_ISSUE="$INPUT_SOURCE_ISSUE"
           python3 -c "
           import json, os
           issue = os.environ.get('B_ISSUE') or None
@@ -464,13 +504,19 @@ jobs:
     needs: [prepare, build, smart-agents]
     if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Validate HTML structure and size
+        env:
+          TEMPLATE: ${{ needs.prepare.outputs.template_name }}
         run: |
-          TEMPLATE="${{ needs.prepare.outputs.template_name }}"
           FILE="templates/$TEMPLATE/index.html"
 
           echo "Validating template: $TEMPLATE"
@@ -552,6 +598,8 @@ jobs:
       - name: Diversity analysis
         if: always() && needs.build.result == 'success'
         continue-on-error: true
+        env:
+          TEMPLATE: ${{ needs.prepare.outputs.template_name }}
         run: |
           echo "Running objective diversity analysis..."
           # Prefer AI artifact HTML, else template
@@ -559,16 +607,16 @@ jobs:
           if [ -f ai_check/generated_index.html ]; then
             HTML_FILE=ai_check/generated_index.html
           else
-            TEMPLATE="${{ needs.prepare.outputs.template_name }}"
             HTML_FILE="templates/$TEMPLATE/index.html"
           fi
+          export HTML_FILE
           python3 -c "
-          import json, pathlib, sys
+          import json, os, pathlib, sys
           sys.path.insert(0, 'agents')
           from utils.diversity_analyzer import calculate_diversity_score
-          html = pathlib.Path('$HTML_FILE').read_text(encoding='utf-8')
+          html = pathlib.Path(os.environ['HTML_FILE']).read_text(encoding='utf-8')
           catalog = json.loads(pathlib.Path('catalog/index.json').read_text(encoding='utf-8')) if pathlib.Path('catalog/index.json').exists() else {'products': []}
-          meta = {'title': '', 'path': '${{ needs.prepare.outputs.template_name }}'}
+          meta = {'title': '', 'path': os.environ.get('TEMPLATE', '')}
           if pathlib.Path('ai_check/content.json').exists():
               c = json.loads(pathlib.Path('ai_check/content.json').read_text(encoding='utf-8'))
               meta['title'] = c.get('title') or ''
@@ -592,6 +640,10 @@ jobs:
     needs: [prepare, build, validate]
     if: always() && needs.build.result == 'success' && needs.validate.result == 'success'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -605,11 +657,15 @@ jobs:
         continue-on-error: true
 
       - name: Assemble product files
+        env:
+          WEEK_ID: ${{ needs.prepare.outputs.week_id }}
+          TARGET: ${{ needs.prepare.outputs.target_path }}
+          TEMPLATE: ${{ needs.prepare.outputs.template_name }}
+          ENABLE_AI: ${{ needs.prepare.outputs.use_ai }}
+          PREP_SOURCE_ISSUE: ${{ needs.prepare.outputs.source_issue_number }}
+          INPUT_SOURCE_ISSUE: ${{ inputs.source_issue_number }}
+          FACTORY_LANG_RESOLVED: ${{ github.event.inputs.lang || vars.FACTORY_LANG || 'ar' }}
         run: |
-          WEEK_ID="${{ needs.prepare.outputs.week_id }}"
-          TARGET="${{ needs.prepare.outputs.target_path }}"
-          TEMPLATE="${{ needs.prepare.outputs.template_name }}"
-          ENABLE_AI="${{ needs.prepare.outputs.use_ai }}"
           mkdir -p "$TARGET"
           BUILD_METHOD="deterministic"
           TITLE=""
@@ -628,8 +684,8 @@ jobs:
           else
             cp "templates/$TEMPLATE/index.html" "$TARGET/index.html"
             if [ -f "templates/$TEMPLATE/meta.json" ]; then
-              TITLE=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('name', '$TEMPLATE'))")
-              DESC=$(python3 -c "import json; print(json.load(open('templates/$TEMPLATE/meta.json')).get('description', ''))")
+              TITLE=$(python3 -c "import json, os; t=os.environ['TEMPLATE']; print(json.load(open(f'templates/{t}/meta.json')).get('name', t))")
+              DESC=$(python3 -c "import json, os; t=os.environ['TEMPLATE']; print(json.load(open(f'templates/{t}/meta.json')).get('description', ''))")
             else
               TITLE="$TEMPLATE"
               DESC="Deterministic product from template $TEMPLATE"
@@ -638,9 +694,9 @@ jobs:
           if [ -z "$TITLE" ]; then TITLE="$TEMPLATE"; fi
           if [ -z "$DESC" ]; then DESC="Weekly micro-product"; fi
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          ISSUE_NO="${{ needs.prepare.outputs.source_issue_number }}"
-          if [ -z "$ISSUE_NO" ]; then ISSUE_NO="${{ inputs.source_issue_number }}"; fi
-          export P_TITLE="$TITLE" P_DESC="$DESC" P_WEEK="$WEEK_ID" P_TEMPLATE="$TEMPLATE" P_METHOD="$BUILD_METHOD" P_TS="$TIMESTAMP" P_TARGET="$TARGET" P_ISSUE="$ISSUE_NO" P_LANG="${{ github.event.inputs.lang || vars.FACTORY_LANG || 'ar' }}"
+          ISSUE_NO="$PREP_SOURCE_ISSUE"
+          if [ -z "$ISSUE_NO" ]; then ISSUE_NO="$INPUT_SOURCE_ISSUE"; fi
+          export P_TITLE="$TITLE" P_DESC="$DESC" P_WEEK="$WEEK_ID" P_TEMPLATE="$TEMPLATE" P_METHOD="$BUILD_METHOD" P_TS="$TIMESTAMP" P_TARGET="$TARGET" P_ISSUE="$ISSUE_NO" P_LANG="$FACTORY_LANG_RESOLVED"
           python3 -c "
           import json, os
           data = {
@@ -712,14 +768,18 @@ jobs:
           PY
 
       - name: Update catalog
+        env:
+          WEEK_ID: ${{ needs.prepare.outputs.week_id }}
+          TEMPLATE: ${{ needs.prepare.outputs.template_name }}
+          TARGET: ${{ needs.prepare.outputs.target_path }}
         run: |
           python3 << 'PY'
           import json, os
           from datetime import datetime, timezone
 
-          week_id = "${{ needs.prepare.outputs.week_id }}"
-          template = "${{ needs.prepare.outputs.template_name }}"
-          target = "${{ needs.prepare.outputs.target_path }}"
+          week_id = os.environ["WEEK_ID"]
+          template = os.environ["TEMPLATE"]
+          target = os.environ["TARGET"]
           catalog_path = "catalog/index.json"
 
           with open(f"{target}/meta.json", encoding="utf-8") as f:
@@ -789,7 +849,7 @@ jobs:
         run: |
           DIV=""
           if [ -f "$TARGET/meta.json" ]; then
-            DIV=$(python3 -c "import json; print(json.load(open('$TARGET/meta.json')).get('diversity_score') or '')")
+            DIV=$(python3 -c "import json, os; print(json.load(open(os.path.join(os.environ['TARGET'], 'meta.json'))).get('diversity_score') or '')")
           fi
           export DIVERSITY_SCORE="$DIV"
           # Prefer issue author; fallback empty
@@ -797,10 +857,12 @@ jobs:
           ls -la catalog/contributors.json || true
 
       - name: Commit and push
+        env:
+          WEEK_ID: ${{ needs.prepare.outputs.week_id }}
+          TARGET: ${{ needs.prepare.outputs.target_path }}
+          TEMPLATE: ${{ needs.prepare.outputs.template_name }}
+          BRANCH: ${{ github.ref_name }}
         run: |
-          WEEK_ID="${{ needs.prepare.outputs.week_id }}"
-          TARGET="${{ needs.prepare.outputs.target_path }}"
-          TEMPLATE="${{ needs.prepare.outputs.template_name }}"
 
           git config user.name "Micro Product Factory"
           git config user.email "factory@users.noreply.github.com"
@@ -812,8 +874,17 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "feat(product): publish ${WEEK_ID} via ${TEMPLATE} (deterministic)"
-            git pull --rebase origin main || true
-            git push
+            pushed=0
+            for attempt in 1 2 3; do
+              git pull --rebase --autostash origin "$BRANCH" || { git rebase --abort; echo '::error::rebase conflict'; exit 1; }
+              git push origin "HEAD:$BRANCH" && { pushed=1; break; }
+              echo "Push attempt $attempt failed; retrying in 5s"
+              sleep 5
+            done
+            if [ "$pushed" != "1" ]; then
+              echo "::error::push failed after 3 attempts"
+              exit 1
+            fi
             echo "Pushed successfully"
           fi
 
@@ -823,23 +894,25 @@ jobs:
         if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NO: ${{ needs.prepare.outputs.source_issue_number }}
+          WEEK_ID: ${{ needs.prepare.outputs.week_id }}
+          REPO: ${{ github.repository }}
+          FACTORY_LANG_RESOLVED: ${{ github.event.inputs.lang || vars.FACTORY_LANG || 'ar' }}
         run: |
-          ISSUE_NO="${{ needs.prepare.outputs.source_issue_number }}"
-          WEEK_ID="${{ needs.prepare.outputs.week_id }}"
           if [ -z "$ISSUE_NO" ]; then
             echo "No source issue — skip"
             exit 0
           fi
-          REPO="${{ github.repository }}"
           PRODUCT_URL="https://github.com/${REPO}/tree/main/products/weekly/${WEEK_ID}"
           STATS_URL="https://github.com/${REPO}/tree/main/stats"
+          export PRODUCT_URL STATS_URL
           gh label create produced --color 5319e7 --description "Idea produced by the factory" 2>/dev/null || true
           python3 -c "
           import sys, os
           sys.path.insert(0, 'agents')
           from utils.i18n import get_text
-          lang = os.environ.get('FACTORY_LANG') or '${{ github.event.inputs.lang || vars.FACTORY_LANG || 'ar' }}'
-          msg = get_text('produce.comment', lang, week='$WEEK_ID', product_url='$PRODUCT_URL', stats_url='$STATS_URL')
+          lang = os.environ.get('FACTORY_LANG') or os.environ.get('FACTORY_LANG_RESOLVED') or 'ar'
+          msg = get_text('produce.comment', lang, week=os.environ['WEEK_ID'], product_url=os.environ['PRODUCT_URL'], stats_url=os.environ['STATS_URL'])
           open('/tmp/produced.md','w',encoding='utf-8').write(msg)
           "
           gh issue comment "$ISSUE_NO" --body-file /tmp/produced.md
@@ -848,11 +921,12 @@ jobs:
           echo "Closed issue #$ISSUE_NO as produced"
 
       - name: Summary
+        env:
+          WEEK_ID: ${{ needs.prepare.outputs.week_id }}
+          TEMPLATE: ${{ needs.prepare.outputs.template_name }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
         run: |
-          WEEK_ID="${{ needs.prepare.outputs.week_id }}"
-          TEMPLATE="${{ needs.prepare.outputs.template_name }}"
-          REPO="${{ github.repository }}"
-          BRANCH="${{ github.ref_name }}"
 
           echo "========================================"
           echo "Product published successfully"
@@ -869,11 +943,15 @@ jobs:
     needs: [prepare, publish]
     if: ${{ always() && needs.publish.result == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: main
+          persist-credentials: false
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -888,15 +966,16 @@ jobs:
           WEEK_ID: ${{ needs.prepare.outputs.week_id }}
           META_PATH: products/weekly/${{ needs.prepare.outputs.week_id }}/meta.json
           PAGES_BASE_URL: ${{ vars.PAGES_BASE_URL || '' }}
+          SOURCE_ISSUE: ${{ needs.prepare.outputs.source_issue_number }}
         run: |
           if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
             echo "Telegram not configured — skip"
             exit 0
           fi
           # resolve contributor from meta/issue if any
-          ISSUE="${{ needs.prepare.outputs.source_issue_number }}"
+          ISSUE="$SOURCE_ISSUE"
           if [ -n "$ISSUE" ]; then
-            USER=$(gh api "repos/${{ github.repository }}/issues/$ISSUE" --jq .user.login 2>/dev/null || true)
+            USER=$(gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE" --jq .user.login 2>/dev/null || true)
             export CONTRIBUTOR="$USER"
           fi
           python3 scripts/notify_telegram.py
