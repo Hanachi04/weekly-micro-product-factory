@@ -1,0 +1,18 @@
+{
+  "week": "2026-W48",
+  "title": "حاسبة بسيطة",
+  "description": "حاسبة أساسية للعمليات الأربع تعمل بدون إنترنت",
+  "path": "calculator",
+  "build_method": "deterministic",
+  "generated_at": "2026-11-23T20:53:08Z",
+  "source_issue_number": "4",
+  "lang": "ar",
+  "quality_score": null,
+  "diversity_score": 62.1,
+  "diversity_components": {
+    "color": 71.2,
+    "structure": 50.0,
+    "text": 73.0,
+    "type": 50.0
+  }
+}

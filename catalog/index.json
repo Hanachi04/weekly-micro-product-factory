@@ -1,6 +1,22 @@
 {
   "products": [
     {
+      "week": "2026-W48",
+      "title": "حاسبة بسيطة",
+      "description": "حاسبة أساسية للعمليات الأربع تعمل بدون إنترنت",
+      "path": "products/weekly/2026-W48",
+      "template": "calculator",
+      "build_method": "deterministic",
+      "generated_at": "2026-11-23T20:53:08Z",
+      "source_issue_number": "4",
+      "diversity_tags": [],
+      "votes": null,
+      "lang": "ar",
+      "diversity_score": 62.1,
+      "critic_score": null,
+      "critic_verdict": null
+    },
+    {
       "week": "2026-w56",
       "title": "قائمة مهامك اليومية",
       "description": "ابدأ يومك بطاقة إيجابية مع تطبيقنا البسيط الذي يتيح لك إضافة مهامك اليومية وتحديدها كمكتملة، مع إمكانية سحب وإعادة ترتيبها لتناسب أوقاتك. كل ذلك يعمل محليًا دون الحاجة للإنترنت، مما يضمن استمرارية إنتاجيتك أينما كنت. احصل على تحفيز يومي، وحقق أهدافك خطوة بخطوة!",
@@ -226,6 +242,6 @@
       "generated_at": "2026-09-17T14:17:08Z"
     }
   ],
-  "last_updated": "2026-09-17T19:05:05Z",
-  "total_count": 14
+  "last_updated": "2026-11-23T20:53:08Z",
+  "total_count": 15
 }
