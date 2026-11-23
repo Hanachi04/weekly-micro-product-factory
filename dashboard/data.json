@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-27T06:06:14Z",
+  "generated_at": "2026-11-23T20:53:38Z",
   "version": "p2.0.1",
   "overview": {
     "signals": 14,
@@ -9,7 +9,7 @@
     "experiments": 0,
     "decisions": 0,
     "cycles": 1,
-    "products": 14
+    "products": 15
   },
   "signals": [
     {
@@ -385,6 +385,16 @@
       "href": "../products/weekly/2026-w38/",
       "generated_at": "2026-09-17T14:19:22Z",
       "diversity_score": null
+    },
+    {
+      "week": "2026-W48",
+      "title": "حاسبة بسيطة",
+      "description": "حاسبة أساسية للعمليات الأربع تعمل بدون إنترنت",
+      "path": "calculator",
+      "build_method": "deterministic",
+      "href": "../products/weekly/2026-W48/",
+      "generated_at": "2026-11-23T20:53:08Z",
+      "diversity_score": 62.1
     }
   ],
   "actions": {

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>لوحة إحصائيات المصنع</title>
@@ -31,15 +32,20 @@ a.home{color:var(--accent);text-decoration:none}
 <body>
 <div class="wrap">
   <h1>🏭 لوحة المصنع</h1>
-  <p class="story">أنتج المجتمع <strong>14</strong> أداة رقمية انطلاقاً من <strong>2</strong> فكرة مجتمعية. منها <strong>6</strong> مولَّدة بالذكاء الاصطناعي.</p>
+  <p class="story">أنتج المجتمع <strong>15</strong> أداة رقمية انطلاقاً من <strong>3</strong> فكرة مجتمعية. منها <strong>6</strong> مولَّدة بالذكاء الاصطناعي.</p>
   <div class="grid">
-    <div class="stat"><div class="n">14</div><div class="l">منتجات منشورة</div></div>
+    <div class="stat"><div class="n">15</div><div class="l">منتجات منشورة</div></div>
     <div class="stat"><div class="n">6</div><div class="l">جيل ذكي</div></div>
-    <div class="stat"><div class="n">8</div><div class="l">قوالب حتمية</div></div>
-    <div class="stat"><div class="n">2</div><div class="l">أفكار من المجتمع</div></div>
+    <div class="stat"><div class="n">9</div><div class="l">قوالب حتمية</div></div>
+    <div class="stat"><div class="n">3</div><div class="l">أفكار من المجتمع</div></div>
   </div>
   <h2>آخر المنتجات</h2>
   <div class="cards">
+      <a class="card" href="../products/weekly/2026-W48/">
+        <div class="week">2026-W48</div>
+        <h3>حاسبة بسيطة</h3>
+        <div class="meta"><span class="badge">حتمي</span> <span class="badge">Issue #4</span></div>
+      </a>
       <a class="card" href="../products/weekly/2026-w56/">
         <div class="week">2026-w56</div>
         <h3>قائمة مهامك اليومية</h3>
@@ -59,11 +65,6 @@ a.home{color:var(--accent);text-decoration:none}
         <div class="week">2026-w53</div>
         <h3>صفحة هبوط بسيطة</h3>
         <div class="meta"><span class="badge">حتمي</span> </div>
-      </a>
-      <a class="card" href="../products/weekly/2026-w52/">
-        <div class="week">2026-w52</div>
-        <h3>متتبع العادات الأسبوعي</h3>
-        <div class="meta"><span class="badge">حتمي</span> </div>
       </a></div>
   <h2>أنماط التنوع</h2>
   <div><span class="tag">قائمة مهام يومية عمودية مع شريط تمرير لل (1)</span><span class="tag">أسلوب تحفيزي وداعم، مع عبارات تشجيعية وت (1)</span><span class="tag">#FF7F50 (1)</span><span class="tag">#32CD32 (1)</span><span class="tag">#1E90FF (1)</span><span class="tag">هيكل متعدد الخطوات مع شريط تقدم، يضم صفح (1)</span><span class="tag">أسلوب كتابة غير رسمي ومتحمس، يركز على إث (1)</span><span class="tag">#FF6F61 (1)</span></div>
@@ -71,11 +72,12 @@ a.home{color:var(--accent);text-decoration:none}
   <h2>جودة الإنتاج</h2>
   <div class="grid">
     <div class="stat"><div class="n">7.0</div><div class="l">متوسط النقد /10</div></div>
-    <div class="stat"><div class="n">70.9</div><div class="l">متوسط التنوع /100</div></div>
+    <div class="stat"><div class="n">69.8</div><div class="l">متوسط التنوع /100</div></div>
     <div class="stat"><div class="n">1</div><div class="l">تحذيرات مراجعة</div></div>
   </div>
   <div class="bars">
-    <div class="bar-row"><span class="bar-label">2026-w56</span><span class="bar" style="width:67.1%" title="diversity"></span><span class="bar bar-critic" style="width:85.0%" title="critic"></span><span class="bar-val">D 67.1 · C 8.5</span></div>
+    <div class="bar-row"><span class="bar-label">2026-W48</span><span class="bar" style="width:62.1%" title="diversity"></span><span class="bar bar-critic" style="width:0%" title="critic"></span><span class="bar-val">D 62.1 · C —</span></div>
+<div class="bar-row"><span class="bar-label">2026-w56</span><span class="bar" style="width:67.1%" title="diversity"></span><span class="bar bar-critic" style="width:85.0%" title="critic"></span><span class="bar-val">D 67.1 · C 8.5</span></div>
 <div class="bar-row"><span class="bar-label">2026-w55</span><span class="bar" style="width:72.0%" title="diversity"></span><span class="bar bar-critic" style="width:85.0%" title="critic"></span><span class="bar-val">D 72.0 · C 8.5</span></div>
 <div class="bar-row"><span class="bar-label">2026-w54</span><span class="bar" style="width:73.3%" title="diversity"></span><span class="bar bar-critic" style="width:0%" title="critic"></span><span class="bar-val">D 73.3 · C —</span></div>
 <div class="bar-row"><span class="bar-label">2026-w53</span><span class="bar" style="width:62.0%" title="diversity"></span><span class="bar bar-critic" style="width:0%" title="critic"></span><span class="bar-val">D 62.0 · C —</span></div>
@@ -86,15 +88,15 @@ a.home{color:var(--accent);text-decoration:none}
   </div>
 
   <h2>أفضل المساهمين</h2>
-  <div class="contrib-list"><div class="contrib"><strong>@Hanachi04</strong> · 2 منتجات · 2 أفكار · D 66.8</div>
+  <div class="contrib-list"><div class="contrib"><strong>@Hanachi04</strong> · 3 منتجات · 3 أفكار · D 65.2</div>
 </div>
 
   <h2>الإشعارات</h2>
   <p class="muted">✅ Telegram مفعّل</p>
 
   <footer>
-    آخر تحديث للكتالوج: 2026-09-17T19:05:05Z<br>
-    وُلدت هذه الصفحة: 2026-09-17 19:05 UTC<br>
+    آخر تحديث للكتالوج: 2026-11-23T20:53:08Z<br>
+    وُلدت هذه الصفحة: 2026-11-23 20:53 UTC<br>
     <a class="home" href="../">العودة للمستودع</a> ·
     <a class="home" href="https://github.com/Hanachi04/weekly-micro-product-factory/issues/new/choose">قدّم فكرة</a>
   </footer>
